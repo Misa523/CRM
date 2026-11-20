@@ -23,7 +23,15 @@ window.Views = window.Views || {};
         sent: i => i.status === 'sent',
         overdue: i => C.invoiceState(i).key === 'overdue',
         paid: i => i.status === 'paid',
+        withFile: i => (i.attachments || []).length > 0,
+        noFile: i => !(i.attachments || []).length,
       };
+      const filterItems = [
+        ...FILTERS.map(([k, label]) => ({ key: k, label, count: all.filter(test[k]).length })),
+        { group: 'Soubor faktury' },
+        { key: 'withFile', label: 'Se souborem', count: all.filter(test.withFile).length },
+        { key: 'noFile', label: 'Bez souboru', count: all.filter(test.noFile).length },
+      ];
 
       el.innerHTML = `
         <div class="kpis">
@@ -33,7 +41,7 @@ window.Views = window.Views || {};
           <div class="kpi"><span class="kpi-label">Po splatnosti</span><span class="kpi-value ${overdue.length ? 'red' : ''}">${money(sum(overdue, 'amount'))}</span><span class="kpi-sub">${n(overdue)}</span></div>
         </div>
         ${C.listShell(
-          C.filterPanel('Zobrazit', FILTERS.map(([k, label]) => ({ key: k, label, count: all.filter(test[k]).length })), state.filter),
+          C.filterPanel('Zobrazit', filterItems, state.filter),
           C.search('Hledat číslo, odběratele…', state.q) + '<span class="total" id="total"></span>')}`;
 
       const list = el.querySelector('#list');

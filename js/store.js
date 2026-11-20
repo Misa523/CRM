@@ -2,7 +2,7 @@
  * Pokud se mění tvar dat, zvyšte SCHEMA_VERSION a doplňte migraci v migrate(). */
 (function () {
   const KEY = 'crm-data-v1';
-  const SCHEMA_VERSION = 1;
+  const SCHEMA_VERSION = 2; // 2: faktury mají attachments[]
   const COLLECTIONS = ['contacts', 'deals', 'tasks', 'invoices'];
 
   const empty = () => ({
@@ -17,6 +17,8 @@
     out.settings = Object.assign(empty().settings, (d && d.settings) || {});
     COLLECTIONS.forEach(c => { if (!Array.isArray(out[c])) out[c] = []; });
     out.contacts.forEach(c => { c.tags = c.tags || []; c.activities = c.activities || []; });
+    out.invoices.forEach(i => { i.attachments = i.attachments || []; });
+    delete out.files; // soubory ze zálohy patří do IndexedDB, ne do localStorage
     out.version = SCHEMA_VERSION;
     return out;
   }

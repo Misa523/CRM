@@ -79,7 +79,7 @@
       return;
     }
 
-    const t = e.target.closest('[data-new], [data-edit], [data-toggle-task], [data-move], [data-mark-paid]');
+    const t = e.target.closest('[data-new], [data-edit], [data-toggle-task], [data-move], [data-mark-paid], [data-open-attach]');
     if (!t) return;
     e.preventDefault();
     if (t.dataset.new) {
@@ -93,6 +93,11 @@
       UI.toast(task.done ? 'Úkol dokončen ✓' : 'Úkol znovu otevřen');
     } else if (t.dataset.move) {
       Views.deals.move(t.dataset.move, +t.dataset.dir);
+    } else if (t.dataset.openAttach) {
+      // Jedna příloha → rovnou otevřít, víc příloh → otevřít fakturu se seznamem.
+      const inv = Store.get('invoices', t.dataset.openAttach);
+      const list = (inv && inv.attachments) || [];
+      if (list.length === 1) Files.open(list[0]); else Schema.edit('invoices', inv.id);
     } else if (t.dataset.markPaid) {
       const inv = Store.get('invoices', t.dataset.markPaid);
       Store.update('invoices', inv.id, Schema.derive('invoices', { status: 'paid' }, inv));

@@ -67,7 +67,7 @@
         { name: 'dueDate', label: 'Datum splatnosti', type: 'date' },
         { name: 'note', label: 'Poznámka / předmět', type: 'textarea' },
       ],
-      defaults: () => ({ number: Store.nextInvoiceNumber(), issueDate: UI.today(), dueDate: UI.addDays(UI.today(), 14), status: 'draft' }),
+      defaults: () => ({ number: Store.nextInvoiceNumber(), issueDate: UI.today(), dueDate: UI.addDays(UI.today(), 14), status: 'draft', attachments: [] }),
     },
   };
 
@@ -88,11 +88,20 @@
   function edit(col, id, preset = {}) {
     const ent = ENTITIES[col];
     const item = id ? Store.get(col, id) : null;
+    const attach = col === 'invoices' ? Files.editor((item && item.attachments) || []) : null;
     UI.formModal({
       title: item ? ent.editTitle : ent.newTitle,
       fields: ent.fields(),
       values: item || Object.assign(ent.defaults(), preset),
-      onSubmit(values) {
+      extra: attach,
+      async onSubmit(values) {
+        if (attach) {
+          try { values.attachments = await attach.commit(); }
+          catch (e) {
+            alert('Soubor se nepodařilo uložit: ' + e.message);
+            values.attachments = (item && item.attachments) || [];
+          }
+        }
         if (item) { Store.update(col, id, derive(col, values, item)); UI.toast('Uloženo'); }
         else { Store.add(col, derive(col, Object.assign(ent.defaults(), preset, values), null)); UI.toast('Přidáno'); }
       },
@@ -100,7 +109,10 @@
         if (col === 'contacts') {
           if (location.hash.includes(id)) location.hash = '#/contacts';
           Store.removeContact(id);
-        } else Store.remove(col, id);
+        } else {
+          if (col === 'invoices' && (item.attachments || []).length) Files.remove(item.attachments.map(a => a.id)).catch(() => {});
+          Store.remove(col, id);
+        }
         UI.toast('Smazáno');
       } : null,
     });

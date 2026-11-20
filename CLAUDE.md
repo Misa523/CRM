@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → schema → components → charts → views/* → app`. Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → files → schema → components → charts → views/* → app`. Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -12,6 +12,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 |---|---|
 | `js/store.js` | Data v `localStorage` (klíč `crm-data-v1`), CRUD, export/import, ukázková data, migrace |
 | `js/ui.js` | Ikony (SVG), formátování (datum, měna `cs-CZ`), modální okno, generátor formulářů, toast |
+| `js/files.js` | Přílohy: IndexedDB, `Files.editor()` (sekce ve formuláři faktury, ukládá až při „Uložit“), `Files.open()`, export a import do zálohy |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
 | `js/charts.js` | Vlastní SVG grafy bez knihoven: `Charts.line`, `bars`, `donutBlock`, `hbars`, `legend`. `Charts.mount(el, w => svg)` překreslí graf podle šířky, `Charts.reset()` na začátku renderu. Bublina s hodnotou přes atribut `data-tip`. Barvy řad třídami `s-primary`, `s-green`… |
@@ -31,7 +32,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 - `contacts`: `name, company, email, phone, ico, address, tags[], note, activities[{id,date,text}]`
 - `deals`: `title, contactId, value, stage (lead|contacted|offer|negotiation|won|lost), expectedDate, wonDate, note`
 - `tasks`: `title, contactId, due, priority (high|normal|low), done, doneAt, note`
-- `invoices`: `number, contactId, amount, status (draft|sent|paid), issueDate, dueDate, paidDate, note`. Stav „po splatnosti“ se počítá (sent + dueDate < dnes).
+- `invoices`: `number, contactId, amount, status (draft|sent|paid), issueDate, dueDate, paidDate, note, attachments[{id,name,type,size,addedAt}]`. Samotné soubory příloh jsou v IndexedDB (`crm-files`, klíč = `id`), viz `js/files.js`. Záloha (Nastavení) je vkládá do JSON jako `files: {id: {name,type,data(base64)}}`; tento klíč se nikdy nesmí dostat do localStorage. Stav „po splatnosti“ se počítá (sent + dueDate < dnes).
 - Data uživatele jsou reálná. **Při změně tvaru dat** zvyš `SCHEMA_VERSION` ve `store.js` a doplň převod v `migrate()`, aby stará data i staré zálohy fungovaly dál. Nikdy existující data nemaž ani nepřejmenovávej pole bez migrace.
 
 ## Konvence

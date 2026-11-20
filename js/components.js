@@ -119,6 +119,12 @@
       { key: 'issueDate', label: 'Vystaveno', sort: i => i.issueDate, render: i => i.issueDate ? fmtDate(i.issueDate) : '' },
       { key: 'dueDate', label: 'Splatnost', sort: i => i.dueDate, render: i => due(i.dueDate, { done: i.status !== 'sent' }) },
       { key: 'amount', label: 'Částka', cls: 'num', sort: i => +i.amount || 0, render: i => `<strong>${money(i.amount)}</strong>` },
+      { key: 'files', label: 'Soubor', cls: 'c-files', sort: i => (i.attachments || []).length || null, render: i => {
+        const n = (i.attachments || []).length;
+        if (!n) return '';
+        const title = n === 1 ? `Otevřít ${i.attachments[0].name}` : `${n} soubory – otevřít fakturu`;
+        return `<button class="clip" data-open-attach="${i.id}" title="${esc(title)}" aria-label="${esc(title)}">${icon('clip')}<span>${n === 1 ? esc((i.attachments[0].name.split('.').pop() || 'soubor').slice(0, 5).toUpperCase()) : n}</span></button>`;
+      } },
       { key: 'status', label: 'Stav', sort: i => invoiceState(i).label, render: i => { const s = invoiceState(i); return pill(s.label, s.color); } },
       { key: 'pay', cls: 'c-act', render: i => i.status !== 'paid'
         ? `<button class="btn xs" data-mark-paid="${i.id}" title="Označit jako zaplacenou">${icon('tick')}<span>Zaplaceno</span></button>` : '' },

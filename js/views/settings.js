@@ -6,6 +6,8 @@ Views.settings = {
     const { esc, icon, fmtDateTime } = UI;
     const s = Store.settings();
     const counts = ['contacts', 'deals', 'tasks', 'invoices'].map(c => Store.all(c).length);
+    const metas = Store.all('invoices').flatMap(i => i.attachments || []);
+    const filesSize = metas.reduce((a, m) => a + (m.size || 0), 0);
 
     el.innerHTML = `<div class="settings">
       <section class="card">
@@ -20,6 +22,7 @@ Views.settings = {
       <section class="card">
         <h3>Záloha dat</h3>
         <p class="muted">Data jsou uložená <strong>jen v tomto prohlížeči na tomto zařízení</strong>. Pravidelně si stahujte zálohu. Stejným souborem data přenesete i na jiné zařízení (např. iPad).</p>
+        ${metas.length ? `<p class="small">Záloha obsahuje i soubory faktur: <strong>${UI.plural(metas.length, 'soubor', 'soubory', 'souborů')}, ${Files.fmtSize(filesSize)}</strong>.</p>` : ''}
         <p class="small">Poslední záloha: <strong>${s.lastBackup ? esc(fmtDateTime(s.lastBackup)) : 'zatím žádná'}</strong></p>
         <div class="btn-row">
           <button class="btn primary" id="export">${icon('download')}<span>Stáhnout zálohu</span></button>
@@ -49,17 +52,26 @@ Views.settings = {
       UI.toast('Nastavení uloženo');
     });
 
-    el.querySelector('#export').addEventListener('click', () => {
-      const blob = new Blob([Store.exportJSON()], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `crm-zaloha-${UI.today()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      Store.markBackup();
-      UI.toast('Záloha stažena');
+    el.querySelector('#export').addEventListener('click', async e => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const obj = JSON.parse(Store.exportJSON());
+        if (metas.length) obj.files = await Files.exportAll(metas); // soubory faktur jako base64
+        const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `crm-zaloha-${UI.today()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        Store.markBackup();
+        UI.toast('Záloha stažena');
+      } catch (err) {
+        alert('Zálohu se nepodařilo vytvořit: ' + err.message);
+        btn.disabled = false;
+      }
     });
 
     el.querySelector('#import').addEventListener('change', e => {
@@ -67,9 +79,16 @@ Views.settings = {
       if (!file) return;
       if (!confirm('Obnovení nahradí všechna současná data obsahem zálohy. Pokračovat?')) { e.target.value = ''; return; }
       const reader = new FileReader();
-      reader.onload = () => {
-        try { Store.importJSON(reader.result); UI.toast('Data obnovena'); }
-        catch (err) { alert('Zálohu se nepodařilo načíst: ' + err.message); }
+      reader.onload = async () => {
+        try {
+          const obj = JSON.parse(reader.result);
+          const files = obj.files;
+          delete obj.files;
+          Store.importJSON(JSON.stringify(obj));
+          await Files.clear().catch(() => {});
+          if (files) await Files.importAll(files);
+          UI.toast('Data obnovena');
+        } catch (err) { alert('Zálohu se nepodařilo načíst: ' + err.message); }
       };
       reader.readAsText(file);
     });
@@ -84,6 +103,7 @@ Views.settings = {
       if (!confirm('Opravdu smazat všechna data? Tuto akci nelze vrátit.')) return;
       if (!confirm('Máte stáhnutou zálohu? Po smazání už data nepůjde obnovit.')) return;
       Store.reset();
+      Files.clear().catch(() => {});
       UI.toast('Data smazána');
     });
   },

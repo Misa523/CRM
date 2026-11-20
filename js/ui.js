@@ -19,6 +19,7 @@
     phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+    clip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
     alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
   };
   const icon = (name, cls = '') =>
@@ -109,14 +110,15 @@
     return `<div class="field${wide}"><label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}</label>${input}</div>`;
   }
 
-  function formModal({ title, fields, values = {}, onSubmit, onDelete }) {
+  /* extra: volitelná vlastní sekce formuláře { html, mount(modal) } – např. přílohy faktury. */
+  function formModal({ title, fields, values = {}, onSubmit, onDelete, extra }) {
     openModal(`
       <form class="modal-body" novalidate>
         <div class="modal-head">
           <h2>${esc(title)}</h2>
           <button type="button" class="icon-btn" data-close aria-label="Zavřít">${icon('x')}</button>
         </div>
-        <div class="form-grid">${fields.map(f => field(f, values[f.name])).join('')}</div>
+        <div class="form-grid">${fields.map(f => field(f, values[f.name])).join('')}${extra ? extra.html : ''}</div>
         <div class="modal-foot">
           ${onDelete ? `<button type="button" class="btn ghost danger" data-del>${icon('trash')}<span>Smazat</span></button>` : ''}
           <span class="spacer"></span>
@@ -142,7 +144,8 @@
       if (onDelete) m.querySelector('[data-del]').addEventListener('click', () => {
         if (confirm('Opravdu smazat? Tuto akci nelze vrátit.')) { closeModal(); onDelete(); }
       });
-      const first = form.querySelector('input, select, textarea');
+      if (extra && extra.mount) extra.mount(m);
+      const first = form.querySelector('input:not([type="file"]), select, textarea');
       if (first && matchMedia('(pointer: fine)').matches) first.focus();
     });
   }
