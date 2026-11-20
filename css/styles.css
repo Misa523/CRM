@@ -288,19 +288,75 @@ a.kpi:hover { background: var(--hover); }
 .welcome h2 { font-size: 22px; margin-bottom: 10px; }
 .welcome > p { color: var(--muted); margin-bottom: 16px; }
 
-.chart { display: flex; align-items: flex-end; gap: 10px; height: 200px; padding-top: 8px; }
-.bar-wrap { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
-.bar { width: 100%; max-width: 44px; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--primary) 30%, var(--surface)); transition: height .3s; }
-.bar.current { background: var(--primary); }
-.bar-val { font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bar-label { font-size: 12px; color: var(--muted); }
+/* ================= Přehled a grafy ================= */
+.ov-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ov-head h2 { font-size: 16px; display: inline; margin-right: 8px; }
+.ov-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.ov-grid .span-2 { grid-column: span 2; }
+.delta { font-weight: 700; }
+.delta.up { color: var(--green); }
+.delta.down { color: var(--red); }
+.widget-head { flex-wrap: wrap; row-gap: 6px; }
 
-.stage-bars { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
-.stage-bar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; align-items: center; gap: 12px; font-size: 13px; }
-.stage-bar-label { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stage-bar-track { height: 10px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; }
-.stage-bar-track span { display: block; height: 100%; border-radius: 99px; background: var(--stage, var(--muted)); min-width: 2px; }
-.stage-bar-value { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+/* Barvy datových řad */
+.s-primary { --c: var(--primary); }
+.s-green { --c: var(--green); }
+.s-red { --c: var(--red); }
+.s-amber { --c: var(--amber); }
+.s-blue { --c: var(--blue); }
+.s-violet { --c: var(--violet); }
+.s-gray { --c: #8f99ab; }
+.s-stage { --c: var(--stage); }
+
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+.legend-dot.dashed { height: 3px; width: 14px; border-radius: 2px; }
+
+.chart-box { width: 100%; min-height: 180px; }
+.chart-svg { display: block; overflow: visible; -webkit-user-select: none; user-select: none; }
+.chart-svg .grid { stroke: var(--border); stroke-width: 1; }
+.chart-svg .ylab, .chart-svg .xlab { fill: var(--muted); font-size: 11px; }
+.chart-svg .area { fill: var(--c); opacity: .14; pointer-events: none; }
+.chart-svg .ln { fill: none; stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.chart-svg .ln.dashed { stroke-dasharray: 5 4; stroke-width: 2; }
+.chart-svg .dot { fill: var(--surface); stroke: var(--c); stroke-width: 2; pointer-events: none; }
+.chart-svg .bar { fill: var(--c); pointer-events: none; }
+.chart-svg .hz { fill: transparent; }
+.chart-svg .hz:hover, .chart-svg .hz.on { fill: var(--hover); }
+
+.donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.donut { position: relative; width: 170px; max-width: 100%; flex: none; margin: 0 auto; }
+.donut-svg { display: block; width: 100%; height: auto; }
+.donut-track { fill: none; stroke: var(--gray-soft); }
+.seg { fill: none; stroke: var(--c); cursor: default; transition: opacity .15s; }
+.seg:hover, .seg.on { opacity: .8; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; }
+.donut-center strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.donut-center span { font-size: 11.5px; color: var(--muted); }
+.legend { list-style: none; margin: 0; padding: 0; flex: 1 1 190px; min-width: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-val { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.legend-val small { font-weight: 500; color: var(--muted); margin-left: 6px; display: inline-block; min-width: 34px; text-align: right; }
+
+.hbars { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+.hbar { display: grid; grid-template-columns: minmax(80px, 140px) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; }
+a.hbar:hover .hbar-label { color: var(--link); text-decoration: underline; }
+.hbar-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 10px; background: var(--gray-soft); border-radius: 99px; overflow: hidden; }
+.hbar-track span { display: block; height: 100%; border-radius: 99px; background: var(--c); min-width: 2px; }
+.hbar-val { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+.chart-tip {
+  position: fixed; z-index: 60; pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: var(--appbar); color: #fff;
+  padding: 8px 10px; border-radius: 6px; box-shadow: var(--shadow-lg);
+  font-size: 12.5px; line-height: 1.55; white-space: nowrap;
+}
+.chart-tip b { font-weight: 650; }
+.tip-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 6px; }
 
 /* Barvy fází obchodu (kanban, pipeline) */
 .stage-lead { --stage: #8792a6; }
@@ -505,6 +561,7 @@ a.kpi:hover { background: var(--hover); }
 /* Menší notebook / iPad na šířku: filtry nahoru jako řada štítků */
 @media (max-width: 1100px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .list-layout, .record-body { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .filters { position: static; padding: 0; background: none; border: 0; }
   .filters-title, .filters-group { display: none; }
@@ -559,10 +616,11 @@ a.kpi:hover { background: var(--hover); }
   .kpi-value { font-size: 18px; }
   .search { max-width: none; }
   .total { margin-left: 0; width: 100%; }
-  .stage-bar { grid-template-columns: 1fr auto; gap: 4px 10px; }
-  .stage-bar-track { grid-column: 1 / -1; grid-row: 2; }
-  .chart { height: 160px; gap: 6px; }
-  .bar-val { display: none; }
+  .ov-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ov-grid .span-2 { grid-column: auto; }
+  .ov-head .segmented { width: 100%; }
+  .ov-head .segmented button { flex: 1; justify-content: center; }
+  .hbar { grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) auto; }
 
   /* Tabulky se na telefonu přeskládají do karet */
   .dtable thead { display: none; }

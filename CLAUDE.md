@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → schema → components → views/* → app`. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → schema → components → charts → views/* → app`. Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -14,6 +14,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/ui.js` | Ikony (SVG), formátování (datum, měna `cs-CZ`), modální okno, generátor formulářů, toast |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
+| `js/charts.js` | Vlastní SVG grafy bez knihoven: `Charts.line`, `bars`, `donutBlock`, `hbars`, `legend`. `Charts.mount(el, w => svg)` překreslí graf podle šířky, `Charts.reset()` na začátku renderu. Bublina s hodnotou přes atribut `data-tip`. Barvy řad třídami `s-primary`, `s-green`… |
 | `js/views/*.js` | Jednotlivé obrazovky: `{ title, subtitle?, actions(), render(el, id), nav?, back?, hideHead? }` |
 | `js/app.js` | Hash router (`#/stranka/id`), horní lišta s moduly, menu „Vytvořit“ (+), globální `data-*` akce |
 
