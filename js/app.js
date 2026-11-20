@@ -105,7 +105,47 @@
     }
   });
 
+  /* ---------- Stav synchronizace (ikona v horní liště) ---------- */
+  const SYNC_UI = {
+    idle: ['cloud', 'Připojuji ke cloudu…'],
+    syncing: ['refresh', 'Synchronizuji…'],
+    ok: ['cloud', 'Vše je synchronizováno'],
+    offline: ['cloudOff', 'Offline – změny se odešlou po připojení'],
+    error: ['alert', 'Chyba synchronizace'],
+  };
+  function renderSync() {
+    const btn = $('sync-status');
+    if (!Sync.configured) { btn.hidden = true; return; }
+    if (Sync.needsLogin()) {
+      if (!document.getElementById('login')) Sync.showLogin(render);
+      return;
+    }
+    const s = Sync.status();
+    const [ic, label] = SYNC_UI[s.status] || SYNC_UI.idle;
+    const title = s.status === 'error' && s.message ? `${label}: ${s.message}` : label;
+    btn.hidden = false;
+    btn.className = `appbar-btn sync ${s.status}`;
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+    btn.innerHTML = UI.icon(ic);
+    const box = document.getElementById('sync-box');
+    if (box && Views.settings.drawSync) Views.settings.drawSync(box);
+  }
+
   window.addEventListener('hashchange', () => { UI.closeModal(); menu.hidden = true; render(); window.scrollTo(0, 0); });
   Store.onChange(render);
-  render();
+  Sync.onStatus(renderSync);
+
+  if (Sync.needsLogin()) {
+    Sync.showLogin(render);
+  } else {
+    render();
+    renderSync();
+    Sync.start();
+  }
+
+  // Offline režim a „aplikace na ploše“ (jen na https, ne při otevření souboru dvojklikem).
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 })();

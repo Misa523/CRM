@@ -33,7 +33,9 @@
   }
   const put = (id, file) => tx('readwrite', s => s.put(file, id));
   const get = id => tx('readonly', s => s.get(id));
-  const remove = ids => tx('readwrite', s => { ids.forEach(id => s.delete(id)); });
+  const removeLocal = ids => tx('readwrite', s => { ids.forEach(id => s.delete(id)); });
+  /** Smaže soubory v tomto zařízení i v cloudu. */
+  const remove = ids => { if (window.Sync) Sync.queueDelete(ids); return removeLocal(ids); };
   const clear = () => tx('readwrite', s => s.clear());
 
   async function persist() {
@@ -61,7 +63,13 @@
   async function open(att) {
     const win = window.open('', '_blank'); // otevřít hned při kliknutí, jinak ho prohlížeč zablokuje
     try {
-      const blob = await get(att.id);
+      let blob = await get(att.id).catch(() => null);
+      if (!blob && window.Sync && Sync.active()) {
+        // Soubor je zatím jen v cloudu (přidaný na jiném zařízení) → stáhnout a uložit sem.
+        try { blob = await Sync.downloadFile(att); }
+        catch (e) { throw new Error(e.offline ? 'Soubor je v cloudu a jste offline. Zkuste to po připojení.' : `Soubor „${att.name}“ se nepodařilo stáhnout: ${e.message}`); }
+        put(att.id, blob).catch(() => {});
+      }
       if (!blob) throw new Error(`Soubor „${att.name}“ v tomto zařízení není. Pokud jste ho přidali na jiném zařízení, přeneste ho zálohou.`);
       openBlob(blob, att.name, win);
     } catch (e) {
@@ -96,7 +104,10 @@
   async function importAll(files) {
     const entries = Object.entries(files || {});
     if (entries.length) await persist();
-    for (const [id, f] of entries) await put(id, fromDataURL(f.data, f.name, f.type));
+    for (const [id, f] of entries) {
+      await put(id, fromDataURL(f.data, f.name, f.type));
+      if (window.Sync) Sync.queueUpload(id);
+    }
   }
 
   /* ---------- Editor příloh ve formuláři ----------
@@ -164,14 +175,15 @@
       for (const x of added) {
         const id = Store.uid();
         await put(id, x.file);
+        if (window.Sync) Sync.queueUpload(id);
         out.push({ id, name: x.file.name, type: x.file.type, size: x.file.size, addedAt: new Date().toISOString() });
       }
-      if (removed.length) await remove(removed);
+      if (removed.length) await remove(removed); // smaže i z cloudu
       return out;
     }
 
     return { html, mount, commit };
   }
 
-  window.Files = { editor, open, remove, clear, exportAll, importAll, fmtSize };
+  window.Files = { editor, open, remove, clear, exportAll, importAll, fmtSize, getLocal: get };
 })();

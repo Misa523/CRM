@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <title>CRM</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -18,6 +19,7 @@
     <a class="brand" href="#/dashboard"><span class="brand-mark">C</span><span id="brand-name">Moje CRM</span></a>
     <nav class="modules" id="nav-top" aria-label="Moduly"></nav>
     <div class="appbar-right">
+      <a class="appbar-btn sync" id="sync-status" href="#/settings" hidden></a>
       <button class="appbar-btn create" id="quick-create" aria-label="Vytvořit nový záznam" aria-haspopup="true"></button>
       <a class="appbar-btn" id="settings-link" href="#/settings" aria-label="Nastavení"></a>
     </div>
@@ -41,9 +43,11 @@
   <dialog id="modal" class="modal"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- Pořadí je důležité: store → ui → files → schema → components → charts → views → app -->
+  <!-- Pořadí je důležité: store → ui → config → sync → files → schema → components → charts → views → app -->
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/files.js"></script>
   <script src="js/schema.js"></script>
   <script src="js/components.js"></script>

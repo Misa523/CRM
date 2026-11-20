@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → files → schema → components → charts → views/* → app`. Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → schema → components → charts → views/* → app`. Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -12,6 +12,10 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 |---|---|
 | `js/store.js` | Data v `localStorage` (klíč `crm-data-v1`), CRUD, export/import, ukázková data, migrace |
 | `js/ui.js` | Ikony (SVG), formátování (datum, měna `cs-CZ`), modální okno, generátor formulářů, toast |
+| `js/config.js` | Adresa a veřejný (anon) klíč Supabase. Prázdné = jen lokální režim bez přihlášení. Nikdy sem nedávej `service_role` klíč. |
+| `js/sync.js` | Přihlášení a synchronizace se Supabase přes REST (bez knihoven): diff proti `st.synced`, push/pull podle `updated_at`, mazání jako `deleted=true`, soubory do Storage. Kontrola každých 15 s a při návratu do aplikace. |
+| `supabase/schema.sql` | Tabulka `records` (user_id, collection, id, data jsonb, deleted, updated_at), RLS a bucket `invoices`. Při změně spusť znovu v Supabase SQL editoru. |
+| `sw.js` | Service worker (offline, „nejdřív síť“). Běží jen na https. |
 | `js/files.js` | Přílohy: IndexedDB, `Files.editor()` (sekce ve formuláři faktury, ukládá až při „Uložit“), `Files.open()`, export a import do zálohy |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
@@ -46,6 +50,12 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 - >1100 px: filtry jako panel vlevo. ≤1100 px: filtry jako řada štítků nad tabulkou. ≤900 px: skryjí se sloupce `hide-md`. ≤720 px (telefon): moduly ve spodní liště, tabulky se přeskládají do karet, formuláře jako spodní panel.
 - Dotykové cíle aspoň ~40 px, inputy `font-size: 16px` (jinak iOS zoomuje), respektuj `env(safe-area-inset-*)`.
 - Přetahování v kanbanu funguje jen myší, na dotyku slouží šipky na kartě. Nové funkce nesmí záviset jen na hoveru nebo drag&drop.
+
+## Synchronizace – pravidla
+- Data se mění **jen** přes `Store` (add/update/remove/…). Synchronizace pozná změny sama porovnáním, nic dalšího volat netřeba.
+- Nové kolekce přidej do `COLLECTIONS` ve `store.js` i do `COLS` v `sync.js`.
+- Nové soubory u záznamů ukládej přes `Files` (ten volá `Sync.queueUpload` / `queueDelete`).
+- Po změně v aplikaci, která je nasazená na GitHub Pages, udělej commit a `git push` (web se aktualizuje sám do ~1 min).
 
 ## Ověření změn
 - Spusť náhled `crm` z `.claude/launch.json` a zkontroluj změnu na šířce 375 px (telefon), 820 px (iPad) a na desktopu, ve světlém i tmavém režimu. V konzoli nesmí být chyby.

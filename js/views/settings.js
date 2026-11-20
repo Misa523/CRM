@@ -9,7 +9,11 @@ Views.settings = {
     const metas = Store.all('invoices').flatMap(i => i.attachments || []);
     const filesSize = metas.reduce((a, m) => a + (m.size || 0), 0);
 
+    const cloud = Sync.active();
+
     el.innerHTML = `<div class="settings">
+      <section class="card" id="sync-box"></section>
+
       <section class="card">
         <h3>Firma</h3>
         <form id="biz" class="form-grid flat">
@@ -21,7 +25,9 @@ Views.settings = {
 
       <section class="card">
         <h3>Záloha dat</h3>
-        <p class="muted">Data jsou uložená <strong>jen v tomto prohlížeči na tomto zařízení</strong>. Pravidelně si stahujte zálohu. Stejným souborem data přenesete i na jiné zařízení (např. iPad).</p>
+        <p class="muted">${cloud
+          ? 'Data jsou bezpečně v cloudu. Záloha do souboru je pojistka navíc – stáhněte si ji občas, třeba jednou za měsíc.'
+          : 'Data jsou uložená <strong>jen v tomto prohlížeči na tomto zařízení</strong>. Pravidelně si stahujte zálohu. Stejným souborem data přenesete i na jiné zařízení (např. iPad).'}</p>
         ${metas.length ? `<p class="small">Záloha obsahuje i soubory faktur: <strong>${UI.plural(metas.length, 'soubor', 'soubory', 'souborů')}, ${Files.fmtSize(filesSize)}</strong>.</p>` : ''}
         <p class="small">Poslední záloha: <strong>${s.lastBackup ? esc(fmtDateTime(s.lastBackup)) : 'zatím žádná'}</strong></p>
         <div class="btn-row">
@@ -38,12 +44,16 @@ Views.settings = {
 
       <section class="card danger-zone">
         <h3>Smazat všechna data</h3>
-        <p class="muted">Odstraní všechny kontakty, obchody, úkoly a faktury z tohoto zařízení.</p>
+        <p class="muted">${cloud
+          ? 'Odstraní všechny kontakty, obchody, úkoly, faktury a jejich soubory <strong>v cloudu i na všech zařízeních</strong>.'
+          : 'Odstraní všechny kontakty, obchody, úkoly a faktury z tohoto zařízení.'}</p>
         <button class="btn danger" id="wipe">${icon('trash')}<span>Smazat vše</span></button>
       </section>
 
       <p class="muted small">Uloženo: ${counts[0]} kontaktů · ${counts[1]} obchodů · ${counts[2]} úkolů · ${counts[3]} faktur</p>
     </div>`;
+
+    Views.settings.drawSync(el.querySelector('#sync-box'));
 
     el.querySelector('#biz').addEventListener('submit', e => {
       e.preventDefault();
@@ -102,9 +112,45 @@ Views.settings = {
     el.querySelector('#wipe').addEventListener('click', () => {
       if (!confirm('Opravdu smazat všechna data? Tuto akci nelze vrátit.')) return;
       if (!confirm('Máte stáhnutou zálohu? Po smazání už data nepůjde obnovit.')) return;
+      Sync.queueDelete(metas.map(m => m.id)); // soubory i z cloudu
       Store.reset();
       Files.clear().catch(() => {});
       UI.toast('Data smazána');
+    });
+  },
+
+  /** Sekce „Synchronizace“ – překresluje se i sama při změně stavu (app.js → renderSync). */
+  drawSync(box) {
+    const { esc, icon, fmtDateTime } = UI;
+    if (!Sync.configured) {
+      box.innerHTML = `<h3>Synchronizace mezi zařízeními</h3>
+        <p class="muted">Zatím vypnutá – data jsou jen v tomto prohlížeči. Po propojení se Supabase se budou data sama synchronizovat mezi počítačem, iPadem i telefonem.</p>`;
+      return;
+    }
+    const s = Sync.status();
+    const user = Sync.user();
+    const LABEL = {
+      idle: ['Připojuji…', ''], syncing: ['Synchronizuji…', ''], ok: ['Vše je synchronizováno', 'green'],
+      offline: ['Offline – změny se odešlou po připojení', 'amber'], error: ['Chyba synchronizace', 'red'],
+    };
+    const [label, color] = LABEL[s.status] || LABEL.idle;
+    box.innerHTML = `<h3>Synchronizace mezi zařízeními</h3>
+      <dl class="fields flat">
+        <div><dt>Přihlášen</dt><dd>${esc(user ? user.email : '—')}</dd></div>
+        <div><dt>Stav</dt><dd><span class="pill ${color || 'gray'}">${esc(label)}</span>${s.status === 'error' && s.message ? `<div class="small red">${esc(s.message)}</div>` : ''}</dd></div>
+        <div><dt>Poslední synchronizace</dt><dd>${s.lastSync ? esc(fmtDateTime(s.lastSync)) : '—'}</dd></div>
+        <div><dt>Čeká na odeslání</dt><dd>${s.pending ? UI.plural(s.pending, 'změna', 'změny', 'změn') : 'nic'}</dd></div>
+      </dl>
+      <div class="btn-row">
+        <button class="btn" id="sync-now" ${s.status === 'syncing' ? 'disabled' : ''}>${icon('refresh')}<span>Synchronizovat teď</span></button>
+        <button class="btn danger" id="sign-out">${icon('logout')}<span>Odhlásit</span></button>
+      </div>`;
+    box.querySelector('#sync-now').addEventListener('click', () => Sync.syncNow());
+    box.querySelector('#sign-out').addEventListener('click', async () => {
+      if (s.pending && !confirm('Některé změny ještě nejsou odeslané do cloudu. Po odhlášení se odešlou až při dalším přihlášení. Pokračovat?')) return;
+      const wipe = confirm('Smazat data i z tohoto zařízení?\n\nOK = smazat (doporučeno na cizím nebo sdíleném zařízení, v cloudu data zůstanou)\nZrušit = ponechat je tady');
+      await Sync.signOut(wipe);
+      Sync.showLogin(() => window.dispatchEvent(new HashChangeEvent('hashchange')));
     });
   },
 };

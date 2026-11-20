@@ -78,6 +78,20 @@
         data[c].forEach(x => { if (x.contactId === id) x.contactId = ''; }));
       Store.remove('contacts', id);
     },
+    /** Celý datový objekt (jen pro čtení – používá synchronizace pro porovnání změn). */
+    raw: () => data,
+    /** Změny stažené z cloudu: [{ col, id, data | null }]. Přepíše/smaže záznamy a uloží jednou. */
+    applyRemote(changes) {
+      changes.forEach(({ col, id, data: d }) => {
+        if (col === 'settings') { if (d) data.settings = Object.assign(empty().settings, d); return; }
+        if (!COLLECTIONS.includes(col)) return;
+        const idx = data[col].findIndex(x => x.id === id);
+        if (d) { if (idx >= 0) data[col][idx] = d; else data[col].push(d); }
+        else if (idx >= 0) data[col].splice(idx, 1);
+      });
+      data = migrate(data);
+      save();
+    },
     settings: () => data.settings,
     setSettings(patch) { Object.assign(data.settings, patch); save(); },
     isEmpty: () => COLLECTIONS.every(c => data[c].length === 0),
