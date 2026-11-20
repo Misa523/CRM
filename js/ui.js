@@ -60,6 +60,8 @@
       return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(+n || 0);
     } catch (e) { return (+n || 0) + ' ' + cur; }
   };
+  /** Česká množná čísla: plural(5, 'faktura', 'faktury', 'faktur') → '5 faktur' */
+  const plural = (n, one, few, many) => `${n} ${n === 1 ? one : n >= 2 && n <= 4 ? few : many}`;
   const sum = (arr, key) => arr.reduce((a, x) => a + (+x[key] || 0), 0);
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -146,7 +148,7 @@
   }
 
   window.UI = {
-    icon, esc, localISO, today, addDays, fmtDate, fmtDateTime, relDue, money, sum, norm,
+    icon, esc, localISO, today, addDays, fmtDate, fmtDateTime, relDue, money, sum, norm, plural,
     toast, openModal, closeModal, formModal,
   };
 })();

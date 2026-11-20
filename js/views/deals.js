@@ -31,7 +31,7 @@ window.Views = window.Views || {};
 
       el.innerHTML = `
         <div class="summary-line">
-          <span><strong>${money(sum(open, 'value'))}</strong> v ${open.length} otevřených obchodech</span>
+          <span><strong>${money(sum(open, "value"))}</strong> · ${UI.plural(open.length, "otevřený obchod", "otevřené obchody", "otevřených obchodů")}</span>
           ${rate != null ? `<span class="muted">Úspěšnost ${rate} %</span>` : ''}
           <span class="muted small hide-touch">Karty můžete přetahovat myší mezi sloupci.</span>
         </div>

@@ -26,10 +26,10 @@ window.Views = window.Views || {};
 
       el.innerHTML = `
         <div class="kpis">
-          <div class="kpi"><span class="kpi-label">Vystaveno ${year}</span><span class="kpi-value">${money(sum(thisYear, 'amount'))}</span><span class="kpi-sub">${thisYear.length} faktur</span></div>
-          <div class="kpi"><span class="kpi-label">Zaplaceno ${year}</span><span class="kpi-value">${money(sum(paidYear, 'amount'))}</span><span class="kpi-sub">${paidYear.length} faktur</span></div>
-          <div class="kpi"><span class="kpi-label">Čeká na úhradu</span><span class="kpi-value">${money(sum(unpaid, 'amount'))}</span><span class="kpi-sub">${unpaid.length} faktur</span></div>
-          <div class="kpi"><span class="kpi-label">Po splatnosti</span><span class="kpi-value ${overdue.length ? 'red' : ''}">${money(sum(overdue, 'amount'))}</span><span class="kpi-sub">${overdue.length} faktur</span></div>
+          <div class="kpi"><span class="kpi-label">Vystaveno ${year}</span><span class="kpi-value">${money(sum(thisYear, 'amount'))}</span><span class="kpi-sub">${UI.plural(thisYear.length, "faktura", "faktury", "faktur")}</span></div>
+          <div class="kpi"><span class="kpi-label">Zaplaceno ${year}</span><span class="kpi-value">${money(sum(paidYear, 'amount'))}</span><span class="kpi-sub">${UI.plural(paidYear.length, "faktura", "faktury", "faktur")}</span></div>
+          <div class="kpi"><span class="kpi-label">Čeká na úhradu</span><span class="kpi-value">${money(sum(unpaid, 'amount'))}</span><span class="kpi-sub">${UI.plural(unpaid.length, "faktura", "faktury", "faktur")}</span></div>
+          <div class="kpi"><span class="kpi-label">Po splatnosti</span><span class="kpi-value ${overdue.length ? 'red' : ''}">${money(sum(overdue, 'amount'))}</span><span class="kpi-sub">${UI.plural(overdue.length, "faktura", "faktury", "faktur")}</span></div>
         </div>
         <div class="toolbar">
           <label class="search">${icon('search')}<input type="search" id="q" placeholder="Hledat číslo, odběratele…" value="${esc(state.q)}" autocomplete="off"></label>

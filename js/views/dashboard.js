@@ -50,9 +50,9 @@ Views.dashboard = {
       ${needBackup ? `<a class="notice" href="#/settings">${icon('alert')}<span>${lastBackup ? 'Poslední záloha je starší než 14 dní.' : 'Zatím nemáte zálohu dat.'} Data jsou jen v tomto prohlížeči, <u>stáhněte si zálohu</u>.</span></a>` : ''}
       <div class="kpis">
         <a class="kpi" href="#/deals"><span class="kpi-label">Otevřené obchody</span><span class="kpi-value">${money(sum(open, 'value'))}</span><span class="kpi-sub">${open.length} v pipeline</span></a>
-        <a class="kpi" href="#/invoices"><span class="kpi-label">Příjmy tento měsíc</span><span class="kpi-value">${money(sum(paidIn(ym), 'amount'))}</span><span class="kpi-sub">${paidIn(ym).length} zaplacených faktur</span></a>
+        <a class="kpi" href="#/invoices"><span class="kpi-label">Příjmy tento měsíc</span><span class="kpi-value">${money(sum(paidIn(ym), 'amount'))}</span><span class="kpi-sub">${UI.plural(paidIn(ym).length, "zaplacená faktura", "zaplacené faktury", "zaplacených faktur")}</span></a>
         <a class="kpi" href="#/invoices"><span class="kpi-label">Čeká na úhradu</span><span class="kpi-value">${money(sum(unpaid, 'amount'))}</span><span class="kpi-sub ${overdue.length ? 'red' : ''}">${overdue.length ? overdue.length + ' po splatnosti' : 'nic po splatnosti'}</span></a>
-        <a class="kpi" href="#/tasks"><span class="kpi-label">Úkoly na dnes</span><span class="kpi-value">${dueNow.length}</span><span class="kpi-sub">${openTasks.length} otevřených celkem</span></a>
+        <a class="kpi" href="#/tasks"><span class="kpi-label">Úkoly na dnes</span><span class="kpi-value">${dueNow.length}</span><span class="kpi-sub">${UI.plural(openTasks.length, "otevřený", "otevřené", "otevřených")} celkem</span></a>
       </div>
 
       <div class="dash-grid">
