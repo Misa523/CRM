@@ -13,9 +13,17 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/store.js` | Data v `localStorage` (klíč `crm-data-v1`), CRUD, export/import, ukázková data, migrace |
 | `js/ui.js` | Ikony (SVG), formátování (datum, měna `cs-CZ`), modální okno, generátor formulářů, toast |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
-| `js/components.js` | Sdílené řádky a karty (úkol, faktura, obchod, avatar, pill) |
-| `js/views/*.js` | Jednotlivé obrazovky: `{ title, actions(), render(el, id), nav?, back? }` |
-| `js/app.js` | Hash router (`#/stranka/id`), navigace, globální `data-*` akce |
+| `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
+| `js/views/*.js` | Jednotlivé obrazovky: `{ title, subtitle?, actions(), render(el, id), nav?, back?, hideHead? }` |
+| `js/app.js` | Hash router (`#/stranka/id`), horní lišta s moduly, menu „Vytvořit“ (+), globální `data-*` akce |
+
+## Vzhled (styl firemního CRM)
+- Tmavá horní lišta s moduly (Domů, Kontakty, Obchody, Úkoly, Faktury), vpravo „+“ pro rychlé vytvoření a ikona Nastavení.
+- Seznamy = tabulka (`C.table`) s filtračním panelem vlevo a hledáním nahoře. Řádek otevře záznam (`data-href` nebo `data-edit`).
+- Detail kontaktu = karta záznamu: hlavička s akcemi, vlevo „Související seznamy“, vpravo sekce s poli a souvisejícími tabulkami.
+- Nový seznam stav stejně: `C.listShell(C.filterPanel(...), toolbar)` a do `#list` vlož `C.table(...)`.
+- Sloupec tabulky: `{ key, label, cls, sort?, render }`. Třídy `cls`: `primary` (hlavní sloupec), `num` (číslo vpravo), `c-check`, `c-act`, `hide-md` (skryje se na iPadu na výšku). Prázdná buňka se zobrazí jako „—“.
+- Žádné logo, název ani barvy Zoho ani jiné značky nekopíruj, styl je jen inspirace.
 | `css/styles.css` | Všechny styly. Barvy jako CSS proměnné v `:root`, tmavý režim přes `prefers-color-scheme` |
 
 ## Datový model
@@ -33,7 +41,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 - Nové pole formuláře stačí přidat do `Schema.ENTITIES[col].fields()`.
 
 ## Responzivita (musí platit vždy)
-- ≥1100 px: plný postranní panel. 721–1100 px (iPad): úzký panel jen s ikonami. ≤720 px (telefon): spodní lišta, formuláře jako spodní panel.
+- >1100 px: filtry jako panel vlevo. ≤1100 px: filtry jako řada štítků nad tabulkou. ≤900 px: skryjí se sloupce `hide-md`. ≤720 px (telefon): moduly ve spodní liště, tabulky se přeskládají do karet, formuláře jako spodní panel.
 - Dotykové cíle aspoň ~40 px, inputy `font-size: 16px` (jinak iOS zoomuje), respektuj `env(safe-area-inset-*)`.
 - Přetahování v kanbanu funguje jen myší, na dotyku slouží šipky na kartě. Nové funkce nesmí záviset jen na hoveru nebo drag&drop.
 

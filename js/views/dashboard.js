@@ -1,14 +1,18 @@
 window.Views = window.Views || {};
 
 Views.dashboard = {
-  title: 'Přehled',
-  actions: () => `<button class="btn" data-new="contacts">${UI.icon('plus')}<span class="hide-sm">Kontakt</span></button>${C.newBtn('tasks', 'Úkol')}`,
+  title: () => {
+    const h = new Date().getHours();
+    return h < 10 ? 'Dobré ráno' : h < 18 ? 'Dobrý den' : 'Dobrý večer';
+  },
+  subtitle: () => new Date().toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long' }),
+  actions: () => C.newBtn('tasks', 'Úkol'),
   render(el) {
     const { esc, icon, money, sum, today, localISO } = UI;
 
     if (Store.isEmpty()) {
       el.innerHTML = `<div class="welcome card">
-        <h2>Vítejte ve svém CRM 👋</h2>
+        <h2>Vítejte ve svém CRM</h2>
         <p>Tady budete mít přehled o klientech, obchodech, úkolech a fakturách. Začněte prvním kontaktem, nebo si nahrajte ukázková data a aplikaci si vyzkoušejte.</p>
         <div class="btn-row">
           ${C.newBtn('contacts', 'Přidat první kontakt')}
@@ -40,46 +44,49 @@ Views.dashboard = {
     const max = Math.max(1, ...months.map(m => m.value));
 
     const upcoming = openTasks.slice().sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
-    const hot = open.slice().sort((a, b) => (+b.value || 0) - (+a.value || 0)).slice(0, 5);
+    const stages = Schema.STAGES.filter(s => s.id !== 'won' && s.id !== 'lost').map(s => {
+      const items = open.filter(d => d.stage === s.id);
+      return { ...s, count: items.length, value: sum(items, 'value') };
+    });
+    const stageMax = Math.max(1, ...stages.map(s => s.value));
 
     const s = Store.settings();
     const lastBackup = s.lastBackup ? new Date(s.lastBackup) : null;
     const needBackup = !lastBackup || (Date.now() - lastBackup) / 864e5 > 14;
 
+    const widget = (title, link, body, cls = '') => `<section class="card widget ${cls}">
+      <div class="widget-head"><h3>${title}</h3>${link ? `<a class="link" href="${link[0]}">${link[1]}</a>` : ''}</div>
+      <div class="widget-body">${body}</div></section>`;
+
     el.innerHTML = `
       ${needBackup ? `<a class="notice" href="#/settings">${icon('alert')}<span>${lastBackup ? 'Poslední záloha je starší než 14 dní.' : 'Zatím nemáte zálohu dat.'} Data jsou jen v tomto prohlížeči, <u>stáhněte si zálohu</u>.</span></a>` : ''}
       <div class="kpis">
-        <a class="kpi" href="#/deals"><span class="kpi-label">Otevřené obchody</span><span class="kpi-value">${money(sum(open, 'value'))}</span><span class="kpi-sub">${open.length} v pipeline</span></a>
-        <a class="kpi" href="#/invoices"><span class="kpi-label">Příjmy tento měsíc</span><span class="kpi-value">${money(sum(paidIn(ym), 'amount'))}</span><span class="kpi-sub">${UI.plural(paidIn(ym).length, "zaplacená faktura", "zaplacené faktury", "zaplacených faktur")}</span></a>
+        <a class="kpi" href="#/deals"><span class="kpi-label">Otevřené obchody</span><span class="kpi-value">${money(sum(open, 'value'))}</span><span class="kpi-sub">${UI.plural(open.length, 'obchod', 'obchody', 'obchodů')} v pipeline</span></a>
+        <a class="kpi" href="#/invoices"><span class="kpi-label">Příjmy tento měsíc</span><span class="kpi-value">${money(sum(paidIn(ym), 'amount'))}</span><span class="kpi-sub">${UI.plural(paidIn(ym).length, 'zaplacená faktura', 'zaplacené faktury', 'zaplacených faktur')}</span></a>
         <a class="kpi" href="#/invoices"><span class="kpi-label">Čeká na úhradu</span><span class="kpi-value">${money(sum(unpaid, 'amount'))}</span><span class="kpi-sub ${overdue.length ? 'red' : ''}">${overdue.length ? overdue.length + ' po splatnosti' : 'nic po splatnosti'}</span></a>
-        <a class="kpi" href="#/tasks"><span class="kpi-label">Úkoly na dnes</span><span class="kpi-value">${dueNow.length}</span><span class="kpi-sub">${UI.plural(openTasks.length, "otevřený", "otevřené", "otevřených")} celkem</span></a>
+        <a class="kpi" href="#/tasks"><span class="kpi-label">Úkoly na dnes</span><span class="kpi-value">${dueNow.length}</span><span class="kpi-sub">${UI.plural(openTasks.length, 'otevřený', 'otevřené', 'otevřených')} celkem</span></a>
       </div>
 
       <div class="dash-grid">
-        <section class="card">
-          <div class="card-head"><h3>Nejbližší úkoly</h3><a class="link" href="#/tasks">Vše</a></div>
-          <div class="rows">${upcoming.map(x => C.taskRow(x)).join('') || C.emptyState('Hotovo!', 'Nemáte žádné otevřené úkoly.')}</div>
-        </section>
+        ${widget('Moje otevřené úkoly', ['#/tasks', 'Zobrazit vše'],
+          C.table({ cols: C.cols.tasks(), rows: upcoming, rowAttrs: C.editAttrs('tasks'), empty: C.emptyState('Hotovo!', 'Nemáte žádné otevřené úkoly.') }), 'flush')}
 
-        <section class="card">
-          <div class="card-head"><h3>Příjmy za 6 měsíců</h3></div>
-          <div class="chart" role="img" aria-label="Sloupcový graf příjmů">
+        ${widget('Příjmy za posledních 6 měsíců', null, `<div class="chart" role="img" aria-label="Sloupcový graf příjmů">
             ${months.map(m => `<div class="bar-wrap" title="${esc(m.label)}: ${esc(money(m.value))}">
               <span class="bar-val">${m.value ? esc(money(m.value).replace(/\s?Kč|\s?€|\s?US\$|\$/, '')) : ''}</span>
               <span class="bar${m.key === ym ? ' current' : ''}" style="height:${Math.max(2, (m.value / max) * 100)}%"></span>
               <span class="bar-label">${esc(m.label)}</span></div>`).join('')}
-          </div>
-        </section>
+          </div>`)}
 
-        <section class="card">
-          <div class="card-head"><h3>Největší otevřené obchody</h3><a class="link" href="#/deals">Pipeline</a></div>
-          <div class="rows">${hot.map(C.dealRow).join('') || C.emptyState('Žádné obchody', 'Přidejte první obchod do pipeline.')}</div>
-        </section>
+        ${widget('Pipeline podle fáze', ['#/deals', 'Obchody'], `<div class="stage-bars">${stages.map(st => `
+            <div class="stage-bar stage-${st.id}">
+              <span class="stage-bar-label">${esc(st.label)} <span class="muted">(${st.count})</span></span>
+              <span class="stage-bar-track"><span style="width:${(st.value / stageMax) * 100}%"></span></span>
+              <span class="stage-bar-value">${money(st.value)}</span>
+            </div>`).join('')}</div>`)}
 
-        <section class="card">
-          <div class="card-head"><h3>Faktury po splatnosti</h3><a class="link" href="#/invoices">Faktury</a></div>
-          <div class="rows">${overdue.map(i => C.invoiceRow(i)).join('') || C.emptyState('Vše v pořádku', 'Žádná faktura není po splatnosti.')}</div>
-        </section>
+        ${widget('Faktury po splatnosti', ['#/invoices', 'Faktury'],
+          C.table({ cols: C.cols.invoices().filter(c => c.key !== 'issueDate'), rows: overdue, rowAttrs: C.editAttrs('invoices'), empty: C.emptyState('Vše v pořádku', 'Žádná faktura není po splatnosti.') }), 'flush')}
       </div>`;
   },
 };

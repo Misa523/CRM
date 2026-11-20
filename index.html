@@ -3,36 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#1c2940">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="CRM">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <title>CRM</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">C</span><span id="brand-name">Moje CRM</span></div>
-      <nav class="nav" id="nav-side" aria-label="Hlavní navigace"></nav>
-    </aside>
+  <header class="appbar">
+    <a class="brand" href="#/dashboard"><span class="brand-mark">C</span><span id="brand-name">Moje CRM</span></a>
+    <nav class="modules" id="nav-top" aria-label="Moduly"></nav>
+    <div class="appbar-right">
+      <button class="appbar-btn create" id="quick-create" aria-label="Vytvořit nový záznam" aria-haspopup="true"></button>
+      <a class="appbar-btn" id="settings-link" href="#/settings" aria-label="Nastavení"></a>
+    </div>
+  </header>
+  <div class="menu" id="create-menu" hidden></div>
 
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-title">
-          <a id="back" class="icon-btn" href="#/" hidden aria-label="Zpět"></a>
-          <h1 id="page-title"></h1>
-        </div>
-        <div id="page-actions" class="topbar-actions"></div>
-      </header>
-      <div id="view" class="view"></div>
-    </main>
-
-    <nav class="tabbar" id="nav-tab" aria-label="Hlavní navigace"></nav>
+  <div class="page">
+    <div class="pagehead" id="pagehead">
+      <div class="pagehead-title">
+        <a id="back" class="icon-btn" href="#/" hidden aria-label="Zpět"></a>
+        <h1 id="page-title"></h1>
+        <span id="page-sub" class="pagehead-sub"></span>
+      </div>
+      <div id="page-actions" class="pagehead-actions"></div>
+    </div>
+    <main id="view" class="view"></main>
   </div>
+
+  <nav class="tabbar" id="nav-tab" aria-label="Moduly"></nav>
 
   <dialog id="modal" class="modal"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
