@@ -161,5 +161,7 @@
   };
 
   load();
+  // Změna v jiné kartě prohlížeče → převzít ji.
+  window.addEventListener('storage', e => { if (e.key === KEY) { load(); listeners.forEach(fn => fn()); } });
   window.Store = Store;
 })();

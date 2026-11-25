@@ -4,6 +4,6 @@
  *   supabaseAnonKey = klíč „anon“ / „publishable“ (je veřejný, smí být v kódu).
  * NIKDY sem nedávejte klíč „service_role“ / „secret“ ani heslo k databázi. */
 window.CRM_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://gscysvybyluqypqskwpp.supabase.co',
+  supabaseAnonKey: 'sb_publishable_PZipOAo7g3ZG6PilI0Bx7A_VNoeSubi',
 };

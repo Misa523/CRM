@@ -5,13 +5,14 @@
  * - st.synced si pamatuje, jak vypadal každý záznam při poslední shodě s cloudem.
  *   Co se od té doby lokálně změnilo, se odešle (push). Novinky z cloudu se stáhnou (pull)
  *   podle času změny (updated_at nastavuje server).
- * - Konflikt: když se záznam změnil lokálně i v cloudu, vyhraje lokální změna (odešle se jako novější).
+ * - Nejdřív se stahuje, pak odesílá. Konflikt (změna tady i v cloudu): vyhraje novější podle updatedAt.
+ *   Smazání proti úpravě: vyhraje úprava (raději záznam zachovat).
  * - Smazání se posílá jako záznam s deleted = true, aby se o něm dozvěděla i ostatní zařízení.
  * - Soubory faktur se nahrávají do Storage (bucket „invoices“, složka <user_id>/).
  */
 (function () {
   const cfg = window.CRM_CONFIG || {};
-  const BASE = String(cfg.supabaseUrl || '').trim().replace(/\/+$/, '');
+  const BASE = String(cfg.supabaseUrl || '').trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
   const KEY = String(cfg.supabaseAnonKey || '').trim();
   const configured = !!(BASE && KEY);
   const AUTH_KEY = 'crm-auth-v1';
@@ -80,7 +81,8 @@
       try {
         setSession(await authCall('token?grant_type=refresh_token', { refresh_token: session.refresh_token }));
       } catch (e) {
-        if (e.offline) throw e;
+        // Výpadek sítě nebo serveru není důvod k odhlášení.
+        if (e.offline || ![400, 401, 403].includes(e.status)) throw e;
         // Přihlášení vypršelo (např. odhlášení na jiném zařízení) → znovu přihlásit.
         session = null; saveSession();
         listeners.forEach(fn => fn());
@@ -167,19 +169,24 @@
       const k = `${r.collection}:${r.id}`;
       const local = m[k];
       const localJ = local !== undefined ? stable(local) : undefined;
-      if (localJ !== synced[k]) continue; // lokálně neodeslaná změna má přednost
+      const remoteJ = r.deleted ? undefined : stable(r.data);
+      if (remoteJ === synced[k]) continue;                       // v cloudu nic nového
+      if (remoteJ === localJ) { if (remoteJ === undefined) delete synced[k]; else synced[k] = remoteJ; continue; }
+      if (localJ !== synced[k]) {                                // změna tady i v cloudu
+        if (r.deleted) { delete synced[k]; continue; }           // smazáno jinde, upraveno tady → zachovat
+        if (local !== undefined && !(String(r.data.updatedAt || '') > String(local.updatedAt || ''))) continue; // tady je novější
+      }
       if (r.deleted) {
         if (local !== undefined) changes.push({ col: r.collection, id: r.id, data: null });
         delete synced[k];
       } else {
-        const j = stable(r.data);
-        if (j !== localJ) changes.push({ col: r.collection, id: r.id, data: r.data });
-        synced[k] = j;
+        changes.push({ col: r.collection, id: r.id, data: r.data });
+        synced[k] = remoteJ;
       }
     }
     st.cursor = new Date(cursor).toISOString();
+    if (changes.length) Store.applyRemote(changes); // nejdřív data, až pak stav synchronizace
     saveState();
-    if (changes.length) Store.applyRemote(changes);
   }
 
   /* ---------------- Soubory faktur ---------------- */
@@ -237,8 +244,8 @@
     running = true;
     setStatus('syncing');
     try {
-      await push();
       await pull();
+      await push();
       await processFiles();
       st.lastSync = new Date().toISOString();
       saveState();
@@ -306,6 +313,18 @@
     saveState();
   }
 
+  let starting = false;
+  /** První synchronizace; při chybě ji další kontrola zkusí znovu. */
+  async function start() {
+    if (!configured || !session || starting) return;
+    starting = true;
+    try { await afterLogin(); }
+    catch (e) { setStatus(e.offline ? 'offline' : 'error', e.message); }
+    finally { starting = false; }
+  }
+  const tick = () => { if (session && !active()) start(); else syncNow(); };
+  const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !!a.value; };
+
   async function afterLogin() {
     if (st.userId !== session.user.id) {
       st = { userId: session.user.id, initialized: false, synced: {}, cursor: null, uploads: [], fileDeletes: [] };
@@ -342,7 +361,7 @@
         box.remove();
         document.body.classList.remove('locked');
         onDone();
-        await afterLogin();
+        start();
       } catch (ex) {
         err.textContent = ex.offline ? 'Nelze se připojit. Zkontrolujte internet.' : ex.message;
         err.hidden = false;
@@ -354,7 +373,7 @@
 
   async function signOut(wipeLocal) {
     clearTimeout(timer);
-    try { if (session) await fetch(`${BASE}/auth/v1/logout`, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + session.access_token } }); } catch (e) { /* offline – nevadí */ }
+    try { if (session) await fetch(`${BASE}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + session.access_token } }); } catch (e) { /* offline – nevadí */ }
     session = null;
     saveSession();
     if (wipeLocal) {
@@ -369,9 +388,14 @@
   /* ---------------- Spouštěče ---------------- */
   if (configured) {
     Store.onChange(() => { if (active()) schedule(); });
-    setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, POLL_MS);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
-    window.addEventListener('online', syncNow);
+    setInterval(() => { if (document.visibilityState === 'visible' && !typing()) tick(); }, POLL_MS); // nepřekreslovat pod rukama
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tick(); });
+    window.addEventListener('online', tick);
+    // Aplikace otevřená ve dvou kartách: převzít stav z té druhé, aby se data navzájem nepřepsala.
+    window.addEventListener('storage', e => {
+      if (e.key === STATE_KEY) st = load(STATE_KEY) || {};
+      if (e.key === AUTH_KEY) { session = load(AUTH_KEY); listeners.forEach(fn => fn()); }
+    });
   }
 
   window.Sync = {
@@ -379,12 +403,9 @@
     active,
     needsLogin: () => configured && !session,
     /** Spustí se při startu aplikace (po přihlášení). */
-    start() {
-      if (!configured || !session) return;
-      if (!st.initialized || st.userId !== session.user.id) afterLogin().catch(e => setStatus(e.offline ? 'offline' : 'error', e.message));
-      else syncNow();
-    },
-    syncNow, showLogin, signOut, queueUpload, queueDelete, downloadFile,
+    start: tick,
+    syncNow: () => (session && !active() ? start() : syncNow()),
+    showLogin, signOut, queueUpload, queueDelete, downloadFile,
     user: () => session && session.user,
     status: () => ({ status, message: statusMsg, lastSync: st.lastSync || null, pending: pendingCount() }),
     onStatus: fn => listeners.push(fn),

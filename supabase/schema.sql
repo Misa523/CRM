@@ -46,6 +46,11 @@ create policy "records_update_own" on public.records for update to authenticated
 create policy "records_delete_own" on public.records for delete to authenticated
   using (user_id = auth.uid());
 
+-- Práva k tabulce: jen přihlášení uživatelé (a ti díky pravidlům výše jen ke svým řádkům).
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.records to authenticated;
+revoke all on public.records from anon;
+
 -- ---------------------------------------------------------------------
 -- Soubory faktur: soukromé úložiště, každý uživatel jen ve své složce <user_id>/...
 -- ---------------------------------------------------------------------
