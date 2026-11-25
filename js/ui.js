@@ -70,6 +70,57 @@
     return `za ${diff} ${daysWord(diff)}`;
   };
 
+  /* ---------- Datum ve formulářích: dd/mm/rrrr ----------
+   * Vlastní textové pole (formát nezávisí na jazyku prohlížeče), skryté pole s hodnotou YYYY-MM-DD
+   * pro uložení a tlačítko s kalendářem prohlížeče pro výběr. */
+  const pad2 = n => String(n).padStart(2, '0');
+  const dateText = iso => (/^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? `${iso.slice(8)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
+  function parseDateText(s) {
+    s = String(s || '').trim();
+    const m = s.match(/^(\d{1,2})[/.\-\s]+(\d{1,2})[/.\-\s]+(\d{2}|\d{4})$/) || s.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (!m) return null;
+    const y = m[3].length === 2 ? 2000 + +m[3] : +m[3], mo = +m[2], d = +m[1];
+    const dt = new Date(y, mo - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d ? `${y}-${pad2(mo)}-${pad2(d)}` : null;
+  }
+  const dateInput = ({ id, name, value = '', required = false }) => `<span class="date-input">
+    <input id="${id}" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/rrrr" maxlength="10" data-date value="${esc(dateText(value))}" ${required ? 'required' : ''}>
+    <input type="hidden" name="${name}" value="${esc(value || '')}">
+    <span class="date-pick">${icon('calendar')}<input type="date" tabindex="-1" aria-label="Vybrat v kalendáři" value="${esc(value || '')}"></span></span>`;
+  function syncDate(text) {
+    const box = text.closest('.date-input');
+    const raw = text.value.trim();
+    const iso = parseDateText(raw);
+    box.querySelector('input[type="hidden"]').value = iso || '';
+    box.querySelector('input[type="date"]').value = iso || '';
+    text.setCustomValidity(!raw || iso ? '' : 'Zadejte datum ve tvaru dd/mm/rrrr, např. 27/11/2026.');
+    return iso;
+  }
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.matches && t.matches('[data-date]')) {
+      // Lomítka se doplní sama: 27 → 27/, 27/11 → 27/11/
+      if (e.inputType === 'insertText' && /^\d{2}$|^\d{2}\/\d{2}$/.test(t.value)) t.value += '/';
+      syncDate(t);
+    }
+  });
+  document.addEventListener('focusout', e => {
+    const t = e.target;
+    if (t.matches && t.matches('[data-date]')) { const iso = syncDate(t); if (iso) t.value = dateText(iso); }
+  });
+  document.addEventListener('change', e => {
+    const p = e.target;
+    if (!(p.matches && p.matches('.date-pick input'))) return;
+    const text = p.closest('.date-input').querySelector('[data-date]');
+    text.value = dateText(p.value);
+    syncDate(text);
+    text.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  document.addEventListener('click', e => {
+    const p = e.target.closest && e.target.closest('.date-pick input');
+    if (p && p.showPicker) { try { p.showPicker(); } catch (err) { /* prohlížeč si ho otevře sám */ } }
+  });
+
   const money = n => {
     const cur = (window.Store && Store.settings().currency) || 'CZK';
     try {
@@ -116,6 +167,8 @@
         input = `<select id="${id}" name="${f.name}" ${req}>${f.options.map(o =>
           `<option value="${esc(o.value)}"${String(o.value) === String(val == null ? '' : val) ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
         break;
+      case 'date':
+        return `<div class="field"><label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}</label>${dateInput({ id, name: f.name, value: val, required: f.required })}</div>`;
       case 'tags':
         input = `<input id="${id}" name="${f.name}" value="${esc((val || []).join(', '))}" placeholder="např. VIP, Praha">`; break;
       case 'number':
@@ -168,7 +221,7 @@
   }
 
   window.UI = {
-    icon, esc, localISO, today, addDays, fmtDate, fmtDateTime, relDue, money, sum, norm, plural,
+    icon, esc, dateInput, dateText, parseDateText, localISO, today, addDays, fmtDate, fmtDateTime, relDue, money, sum, norm, plural,
     toast, openModal, closeModal, formModal,
   };
 })();

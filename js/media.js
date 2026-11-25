@@ -390,7 +390,7 @@
     UI.openModal(`<div class="modal-body">
       <div class="modal-head"><h2>Podklady pro pojišťovnu</h2><button type="button" class="icon-btn" data-close aria-label="Zavřít">${icon('x')}</button></div>
       <div class="form-grid">
-        <div class="field"><label for="cl_date">Datum události</label><input id="cl_date" type="date" value="${esc(claim.date)}"></div>
+        <div class="field"><label for="cl_date">Datum události</label>${UI.dateInput({ id: 'cl_date', name: 'cl_date', value: claim.date })}</div>
         <div class="field"><label for="cl_num">Číslo pojistné události</label><input id="cl_num" value="${esc(claim.number)}" autocomplete="off" placeholder="pokud ho už máte"></div>
         <div class="field wide"><label for="cl_text">Co se stalo</label><textarea id="cl_text" rows="3">${esc(claim.text)}</textarea></div>
         <div class="field wide">
@@ -438,7 +438,7 @@
       }));
       $('#cl_small').addEventListener('change', reset);
       ['#cl_date', '#cl_num', '#cl_text'].forEach(s => $(s).addEventListener('input', () => { if (pack) reset(); }));
-      const form = () => ({ date: $('#cl_date').value, number: $('#cl_num').value.trim(), text: $('#cl_text').value.trim() });
+      const form = () => ({ date: $('[name="cl_date"]').value, number: $('#cl_num').value.trim(), text: $('#cl_text').value.trim() });
       const saveClaim = () => {
         if (!$('#cl_date')) return;
         const v = form(), d = Store.get(owner.col, ownerId);

@@ -1,6 +1,6 @@
 window.Views = window.Views || {};
 
-/* Kalendář: zakázky (termín práce), úkoly a splatnosti faktur. */
+/* Kalendář: zakázky (termín práce), úkoly a splatnosti faktur. Klepnutí na událost ji otevře k úpravě v okně. */
 (function () {
   const { esc, icon, today, addDays, localISO } = UI;
   const LANES = 3; // kolik řádků událostí se vejde do dne, zbytek je „+N“
@@ -38,7 +38,7 @@ window.Views = window.Views || {};
         <span class="cal-dots">${list.slice(0, 4).map(x => `<i class="ev-${x.e.color}"></i>`).join('')}</span>
         ${more ? `<span class="cal-more">+${more}</span>` : ''}</button>`;
     }).join('');
-    const bars = items.filter(x => x.lane < LANES).map(x => `<a class="cal-ev ev-${x.e.color} ${x.e.cls}${x.cutL ? ' cut-l' : ''}${x.cutR ? ' cut-r' : ''}" ${Planning.attrs(x.e)}
+    const bars = items.filter(x => x.lane < LANES).map(x => `<a class="cal-ev ev-${x.e.color} ${x.e.cls}${x.cutL ? ' cut-l' : ''}${x.cutR ? ' cut-r' : ''}" ${Planning.attrs(x.e, true)}
       style="grid-column:${x.a + 1} / ${x.b + 2};grid-row:${x.lane + 2}" title="${esc(x.e.title + ' – ' + x.e.sub)}">${x.e.kind === 'deal' ? '' : icon(Planning.ICON[x.e.kind])}<span>${esc(x.e.title)}</span></a>`).join('');
     return `<div class="cal-week">${days}${bars}</div>`;
   }
@@ -74,7 +74,7 @@ window.Views = window.Views || {};
           </section>
           <section class="card flush cal-agenda">
             <div class="sec-head"><h3>${esc(longDate(state.day))}</h3></div>
-            <div class="ag-list">${dayEvents.map(e => Planning.row(e)).join('') || '<p class="muted small sec-empty">Na tento den nic není.</p>'}</div>
+            <div class="ag-list">${dayEvents.map(e => Planning.row(e, '', true)).join('') || '<p class="muted small sec-empty">Na tento den nic není.</p>'}</div>
             <div class="ag-add">
               <button class="btn xs" data-new="deals" data-preset="${p({ stage: 'won', progress: 'planned', dateFrom: state.day, dateTo: state.day })}">${icon('plus')}<span>Zakázka</span></button>
               <button class="btn xs" data-new="tasks" data-preset="${p({ due: state.day })}">${icon('plus')}<span>Úkol</span></button>

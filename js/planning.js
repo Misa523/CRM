@@ -74,10 +74,16 @@
 
   /* ---------- HTML ---------- */
   const ICON = { deal: 'kanban', task: 'check', invoice: 'file' };
-  const attrs = e => (e.kind === 'deal' ? `href="${C.dealHref(e.id)}"` : `href="#" data-edit="${e.kind === 'task' ? 'tasks' : 'invoices'}" data-id="${e.id}"`);
-  /** Řádek události v seznamu dne. */
-  const row = (e, extra = '') => `<a class="ag-row ev-${e.color} ${e.cls}" ${attrs(e)}>${UI.icon(ICON[e.kind])}
-    <span class="ag-text"><b>${UI.esc(e.title)}</b><small>${UI.esc(e.sub)}${e.from !== e.to ? ` · ${fmtDate(e.from)} – ${fmtDate(e.to)}` : ''}</small></span>${extra}</a>`;
+  const COL = { deal: 'deals', task: 'tasks', invoice: 'invoices' };
+  /** Odkaz události: úprava v okně na místě (edit), nebo zakázka otevře svůj detail. */
+  const attrs = (e, edit) => (e.kind === 'deal' && !edit ? `href="${C.dealHref(e.id)}"` : `href="#" data-edit="${COL[e.kind]}" data-id="${e.id}"`);
+  /** Řádek události v seznamu dne; s edit se upravuje v okně a zakázka má navíc odkaz na detail. */
+  const row = (e, extra = '', edit = false) => {
+    const a = `<a class="ag-row ev-${e.color} ${e.cls}" ${attrs(e, edit)}>${UI.icon(ICON[e.kind])}
+      <span class="ag-text"><b>${UI.esc(e.title)}</b><small>${UI.esc(e.sub)}${e.from !== e.to ? ` · ${fmtDate(e.from)} – ${fmtDate(e.to)}` : ''}</small></span>${extra}</a>`;
+    return edit && e.kind === 'deal'
+      ? `<div class="ag-item">${a}<a class="icon-btn ag-open" href="${C.dealHref(e.id)}" aria-label="Otevřít zakázku ${UI.esc(e.title)}" title="Otevřít zakázku">${UI.icon('right')}</a></div>` : a;
+  };
 
   window.Planning = { PROGRESS, of, label, pill, start, end, term, set, afterInvoice, issues, invoicePreset, events, row, attrs, ICON, addDays };
 })();
