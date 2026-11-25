@@ -79,7 +79,7 @@
   }
 
   /* ---------- Sloupcový graf (seskupené sloupce) ---------- */
-  function bars({ width: w, height: h = 220, labels, tipLabels = labels, series, format = String, integer = true }) {
+  function bars({ width: w, height: h = 220, labels, tipLabels = labels, series, format = String, integer = true, tipNote = () => '' }) {
     const n = labels.length;
     const fr = frame({ w, h, n, maxV: Math.max(0, ...series.flatMap(s => s.values)), integer });
     const gw = fr.iw / n;
@@ -88,7 +88,7 @@
     let out = fr.grid;
     labels.forEach((l, i) => {
       const gx = fr.padL + gw * i;
-      out += `<rect class="hz" x="${f1(gx)}" y="${fr.padT}" width="${f1(gw)}" height="${fr.ih}" data-tip="${esc(tipHtml(tipLabels[i], series, i, format))}"/>`;
+      out += `<rect class="hz" x="${f1(gx)}" y="${fr.padT}" width="${f1(gw)}" height="${fr.ih}" data-tip="${esc(tipHtml(tipLabels[i], series, i, format) + tipNote(i))}"/>`;
       if (fr.showLabel(i)) out += `<text class="xlab" x="${f1(gx + gw / 2)}" y="${h - 6}" text-anchor="middle">${esc(l)}</text>`;
       series.forEach((s, j) => {
         const v = s.values[i] || 0;

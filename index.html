@@ -12,6 +12,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <title>CRM</title>
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -20,6 +21,7 @@
     <nav class="modules" id="nav-top" aria-label="Moduly"></nav>
     <div class="appbar-right">
       <a class="appbar-btn sync" id="sync-status" href="#/settings" hidden></a>
+      <button class="appbar-btn" id="theme-toggle"></button>
       <button class="appbar-btn create" id="quick-create" aria-label="Vytvořit nový záznam" aria-haspopup="true"></button>
       <a class="appbar-btn" id="settings-link" href="#/settings" aria-label="Nastavení"></a>
     </div>
@@ -43,20 +45,25 @@
   <dialog id="modal" class="modal"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- Pořadí je důležité: store → ui → config → sync → files → schema → components → charts → views → app -->
+  <!-- Pořadí je důležité: store → ui → config → sync → files → zip → schema → components → charts → finance → media → views → app -->
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/config.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/files.js"></script>
+  <script src="js/zip.js"></script>
   <script src="js/schema.js"></script>
   <script src="js/components.js"></script>
   <script src="js/charts.js"></script>
+  <script src="js/finance.js"></script>
+  <script src="js/media.js"></script>
   <script src="js/views/dashboard.js"></script>
   <script src="js/views/contacts.js"></script>
   <script src="js/views/deals.js"></script>
+  <script src="js/views/deal.js"></script>
   <script src="js/views/tasks.js"></script>
   <script src="js/views/invoices.js"></script>
+  <script src="js/views/finance.js"></script>
   <script src="js/views/settings.js"></script>
   <script src="js/app.js"></script>
 </body>

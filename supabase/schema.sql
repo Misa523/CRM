@@ -52,11 +52,11 @@ grant select, insert, update, delete on public.records to authenticated;
 revoke all on public.records from anon;
 
 -- ---------------------------------------------------------------------
--- Soubory faktur: soukromé úložiště, každý uživatel jen ve své složce <user_id>/...
+-- Soubory (doklady, fotky, videa; do 50 MB): soukromé úložiště, každý uživatel jen ve své složce <user_id>/...
 -- ---------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('invoices', 'invoices', false, 26214400)
-on conflict (id) do nothing;
+values ('invoices', 'invoices', false, 52428800)
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit;
 
 drop policy if exists "invoices_select_own" on storage.objects;
 drop policy if exists "invoices_insert_own" on storage.objects;

@@ -13,7 +13,7 @@ window.Views = window.Views || {};
     { key: 'email', label: 'E-mail', cls: 'hide-md', sort: c => c.email, render: c => c.email ? `<a class="cell-link" href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
     { key: 'phone', label: 'Telefon', render: c => c.phone ? `<a class="cell-link" href="tel:${esc(c.phone.replace(/\s/g, ''))}">${esc(c.phone)}</a>` : '' },
     { key: 'tags', label: 'Štítky', cls: 'hide-md', render: c => C.tags(c.tags) },
-    { key: 'deals', label: 'Otevřené obchody', cls: 'num', sort: c => sum(openDealsOf(c.id), 'value') || null, render: c => {
+    { key: 'deals', label: 'Otevřené zakázky', cls: 'num', sort: c => sum(openDealsOf(c.id), 'value') || null, render: c => {
       const v = sum(openDealsOf(c.id), 'value');
       return v ? `<strong>${money(v)}</strong>` : '';
     } },
@@ -40,7 +40,7 @@ window.Views = window.Views || {};
 
       const items = [
         { key: 'all', label: 'Všechny kontakty', count: all.length },
-        { key: 'deals', label: 'S otevřeným obchodem', count: count('deals') },
+        { key: 'deals', label: 'S otevřenou zakázkou', count: count('deals') },
         { key: 'recent', label: 'Přidané za 30 dní', count: count('recent') },
         ...(tags.length ? [{ group: 'Štítky' }, ...tags.map(t => ({ key: 'tag:' + t, label: t, count: count('tag:' + t) }))] : []),
       ];
@@ -111,7 +111,7 @@ window.Views = window.Views || {};
           <nav class="record-nav filters" aria-label="Související seznamy">
             <div class="filters-title">Související seznamy</div>
             <div class="filters-list">
-              ${[['sec-info', 'Informace', null], ['sec-activity', 'Aktivita', acts.length], ['sec-deals', 'Obchody', deals.length], ['sec-tasks', 'Úkoly', tasks.length], ['sec-invoices', 'Faktury', invoices.length]]
+              ${[['sec-info', 'Informace', null], ['sec-activity', 'Aktivita', acts.length], ['sec-deals', 'Zakázky', deals.length], ['sec-tasks', 'Úkoly', tasks.length], ['sec-invoices', 'Faktury', invoices.length]]
                 .map(([sid, l, n]) => `<button class="filter" data-jump="${sid}"><span>${l}</span>${n != null ? `<span class="filter-count">${n}</span>` : ''}</button>`).join('')}
             </div>
           </nav>
@@ -126,7 +126,7 @@ window.Views = window.Views || {};
                 ${field('Telefon', c.phone ? `<a class="cell-link" href="tel:${esc(c.phone.replace(/\s/g, ''))}">${esc(c.phone)}</a>` : '')}
                 ${field('IČO', esc(c.ico))}
                 ${field('Adresa', esc(c.address))}
-                ${field('Otevřené obchody', openSum ? money(openSum) : '')}
+                ${field('Otevřené zakázky', openSum ? money(openSum) : '')}
                 ${field('Zaplaceno celkem', money(paid))}
                 ${field('Štítky', C.tags(c.tags))}
                 ${field('Vytvořeno', c.createdAt ? fmtDate(c.createdAt) : '')}
@@ -149,8 +149,8 @@ window.Views = window.Views || {};
               </div>
             </section>
 
-            ${related('sec-deals', 'Obchody', 'deals', 'Obchod',
-              C.table({ cols: C.cols.deals({ contact: false }), rows: deals, rowAttrs: C.editAttrs('deals'), empty: noRows('Žádné obchody.') }))}
+            ${related('sec-deals', 'Zakázky', 'deals', 'Zakázka',
+              C.table({ cols: C.cols.deals({ contact: false }), rows: deals, rowAttrs: C.hrefAttrs(C.dealHref), empty: noRows('Žádné zakázky.') }))}
             ${related('sec-tasks', 'Úkoly', 'tasks', 'Úkol',
               C.table({ cols: C.cols.tasks({ contact: false }), rows: tasks, rowAttrs: C.editAttrs('tasks'), empty: noRows('Žádné úkoly.') }))}
             ${related('sec-invoices', 'Faktury', 'invoices', 'Faktura',

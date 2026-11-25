@@ -5,13 +5,21 @@ Views.settings = {
   render(el) {
     const { esc, icon, fmtDateTime } = UI;
     const s = Store.settings();
-    const counts = ['contacts', 'deals', 'tasks', 'invoices'].map(c => Store.all(c).length);
-    const metas = Store.all('invoices').flatMap(i => i.attachments || []);
+    const counts = ['contacts', 'deals', 'tasks', 'invoices', 'transactions', 'media'].map(c => Store.all(c).length);
+    const metas = Store.docMetas();
+    const media = Store.all('media');
     const filesSize = metas.reduce((a, m) => a + (m.size || 0), 0);
 
     const cloud = Sync.active();
 
     el.innerHTML = `<div class="settings">
+      <section class="card">
+        <h3>Vzhled</h3>
+        <div class="segmented" role="group" aria-label="Vzhled">${[['light', 'Světlý', 'sun'], ['dark', 'Tmavý', 'moon'], ['auto', 'Podle zařízení', 'monitor']].map(([k, l, ic]) =>
+          `<button type="button" data-theme-set="${k}" class="${Theme.get() === k ? 'on' : ''}">${icon(ic)}<span>${l}</span></button>`).join('')}</div>
+        <p class="muted small theme-hint">Platí jen pro toto zařízení.</p>
+      </section>
+
       <section class="card" id="sync-box"></section>
 
       <section class="card">
@@ -28,7 +36,8 @@ Views.settings = {
         <p class="muted">${cloud
           ? 'Data jsou bezpečně v cloudu. Záloha do souboru je pojistka navíc – stáhněte si ji občas, třeba jednou za měsíc.'
           : 'Data jsou uložená <strong>jen v tomto prohlížeči na tomto zařízení</strong>. Pravidelně si stahujte zálohu. Stejným souborem data přenesete i na jiné zařízení (např. iPad).'}</p>
-        ${metas.length ? `<p class="small">Záloha obsahuje i soubory faktur: <strong>${UI.plural(metas.length, 'soubor', 'soubory', 'souborů')}, ${Files.fmtSize(filesSize)}</strong>.</p>` : ''}
+        ${media.length ? `<p class="small">Fotky a videa (${counts[5]}, ${Files.fmtSize(UI.sum(media, 'size'))}) v záloze <strong>nejsou</strong>, jsou na to moc velké. Stáhnete je u zakázky: Pro pojišťovnu → Stáhnout ZIP.</p>` : ''}
+        ${metas.length ? `<p class="small">Záloha obsahuje i faktury a účtenky: <strong>${UI.plural(metas.length, 'soubor', 'soubory', 'souborů')}, ${Files.fmtSize(filesSize)}</strong>.</p>` : ''}
         <p class="small">Poslední záloha: <strong>${s.lastBackup ? esc(fmtDateTime(s.lastBackup)) : 'zatím žádná'}</strong></p>
         <div class="btn-row">
           <button class="btn primary" id="export">${icon('download')}<span>Stáhnout zálohu</span></button>
@@ -38,21 +47,22 @@ Views.settings = {
 
       <section class="card">
         <h3>Ukázková data</h3>
-        <p class="muted">Přidá několik vzorových kontaktů, obchodů, úkolů a faktur, ať si můžete aplikaci vyzkoušet.</p>
+        <p class="muted">Přidá několik vzorových kontaktů, zakázek, úkolů, faktur a výdajů, ať si můžete aplikaci vyzkoušet.</p>
         <button class="btn" id="demo">Nahrát ukázková data</button>
       </section>
 
       <section class="card danger-zone">
         <h3>Smazat všechna data</h3>
         <p class="muted">${cloud
-          ? 'Odstraní všechny kontakty, obchody, úkoly, faktury a jejich soubory <strong>v cloudu i na všech zařízeních</strong>.'
-          : 'Odstraní všechny kontakty, obchody, úkoly a faktury z tohoto zařízení.'}</p>
+          ? 'Odstraní všechny kontakty, zakázky, úkoly, faktury, finance, fotky, videa a soubory <strong>v cloudu i na všech zařízeních</strong>.'
+          : 'Odstraní všechny kontakty, zakázky, úkoly, faktury, finance, fotky a videa z tohoto zařízení.'}</p>
         <button class="btn danger" id="wipe">${icon('trash')}<span>Smazat vše</span></button>
       </section>
 
-      <p class="muted small">Uloženo: ${counts[0]} kontaktů · ${counts[1]} obchodů · ${counts[2]} úkolů · ${counts[3]} faktur</p>
+      <p class="muted small">Uloženo: ${counts[0]} kontaktů · ${counts[1]} zakázek · ${counts[2]} úkolů · ${counts[3]} faktur · ${counts[4]} příjmů a výdajů · ${counts[5]} fotek a videí</p>
     </div>`;
 
+    el.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => Theme.set(b.dataset.themeSet)));
     Views.settings.drawSync(el.querySelector('#sync-box'));
 
     el.querySelector('#biz').addEventListener('submit', e => {
@@ -67,7 +77,8 @@ Views.settings = {
       btn.disabled = true;
       try {
         const obj = JSON.parse(Store.exportJSON());
-        if (metas.length) obj.files = await Files.exportAll(metas); // soubory faktur jako base64
+        const missing = [];
+        if (metas.length) obj.files = await Files.exportAll(metas, missing); // faktury a účtenky jako base64
         const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -78,6 +89,7 @@ Views.settings = {
         setTimeout(() => URL.revokeObjectURL(a.href), 10000);
         Store.markBackup();
         UI.toast('Záloha stažena');
+        if (missing.length) alert('Tyto soubory se do zálohy nepodařilo přidat (nejsou v tomto zařízení ani v cloudu):\n\n' + missing.join('\n'));
       } catch (err) {
         alert('Zálohu se nepodařilo vytvořit: ' + err.message);
         btn.disabled = false;
@@ -87,7 +99,7 @@ Views.settings = {
     el.querySelector('#import').addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
-      if (!confirm('Obnovení nahradí všechna současná data obsahem zálohy. Pokračovat?')) { e.target.value = ''; return; }
+      if (!confirm('Obnovení nahradí současná data obsahem zálohy (fotky a videa zakázek, které v záloze jsou, zůstanou). Pokračovat?')) { e.target.value = ''; return; }
       const reader = new FileReader();
       reader.onload = async () => {
         try {
@@ -95,7 +107,7 @@ Views.settings = {
           const files = obj.files;
           delete obj.files;
           Store.importJSON(JSON.stringify(obj));
-          await Files.clear().catch(() => {});
+          await Files.prune(Store.fileIds()).catch(() => {});
           if (files) await Files.importAll(files);
           UI.toast('Data obnovena');
         } catch (err) { alert('Zálohu se nepodařilo načíst: ' + err.message); }
@@ -111,8 +123,8 @@ Views.settings = {
 
     el.querySelector('#wipe').addEventListener('click', () => {
       if (!confirm('Opravdu smazat všechna data? Tuto akci nelze vrátit.')) return;
-      if (!confirm('Máte stáhnutou zálohu? Po smazání už data nepůjde obnovit.')) return;
-      Sync.queueDelete(metas.map(m => m.id)); // soubory i z cloudu
+      if (!confirm('Máte stáhnutou zálohu? Po smazání už data nepůjde obnovit. Fotky a videa v záloze nejsou.')) return;
+      Sync.queueDelete(Store.fileIds()); // soubory i z cloudu
       Store.reset();
       Files.clear().catch(() => {});
       UI.toast('Data smazána');

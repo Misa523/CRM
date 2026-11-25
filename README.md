@@ -1,12 +1,12 @@
 # Moje CRM
 
-Jednoduché osobní CRM: kontakty, obchody (pipeline), úkoly a faktury.
+Jednoduché osobní CRM: kontakty, zakázky (pipeline, fotky a videa), úkoly, faktury a finance.
 
 ## Jak spustit
 Dvakrát klikněte na `index.html`, otevře se v prohlížeči. Nic se neinstaluje.
 
 ## Kde jsou data
-Jen v prohlížeči, ve kterém aplikaci používáte. Zálohu stáhnete v **Nastavení → Stáhnout zálohu**.
+V cloudu (Supabase) po přihlášení, kopie je v prohlížeči. Bez přihlášení jen v prohlížeči. Zálohu stáhnete v **Nastavení → Stáhnout zálohu**.
 Stejným souborem data přenesete i na jiné zařízení (**Obnovit ze zálohy**).
 
 ## Synchronizace mezi zařízeními

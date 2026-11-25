@@ -41,12 +41,12 @@ window.Views = window.Views || {};
       if (Store.isEmpty()) {
         el.innerHTML = `<div class="welcome card">
           <h2>Vítejte ve svém CRM</h2>
-          <p>Tady budete mít přehled o klientech, obchodech, úkolech a fakturách. Začněte prvním kontaktem, nebo si nahrajte ukázková data a aplikaci si vyzkoušejte.</p>
+          <p>Tady budete mít přehled o klientech, zakázkách, úkolech a fakturách. Začněte prvním kontaktem, nebo si nahrajte ukázková data a aplikaci si vyzkoušejte.</p>
           <div class="btn-row">
             ${C.newBtn('contacts', 'Přidat první kontakt')}
             <button class="btn" id="demo">Nahrát ukázková data</button>
           </div>
-          <p class="muted small">Data se ukládají jen v tomto prohlížeči. Zálohu stáhnete v Nastavení.</p>
+          ${Sync.active() ? '' : '<p class="muted small">Data se ukládají jen v tomto prohlížeči. Zálohu stáhnete v Nastavení.</p>'}
         </div>`;
         el.querySelector('#demo').onclick = () => { Store.seedDemo(); UI.toast('Ukázková data nahrána'); };
         return;
@@ -64,10 +64,10 @@ window.Views = window.Views || {};
       const contacts = Store.all('contacts');
       const deals = Store.all('deals');
       const invoices = Store.all('invoices');
-      const paid = invoices.filter(i => i.status === 'paid');
-      const paidMonth = i => mk(i.paidDate || i.issueDate);
-      const revenue = sum(paid.filter(i => keys.has(paidMonth(i))), 'amount');
-      const revenuePrev = sum(paid.filter(i => prevKeys.has(paidMonth(i))), 'amount');
+      const moves = Finance.movements(); // stejné příjmy a výdaje jako na stránce Finance
+      const incomes = moves.filter(m => m.type === 'income'), expenses = moves.filter(m => m.type === 'expense');
+      const revenue = sum(incomes.filter(m => keys.has(mk(m.date))), 'amount');
+      const revenuePrev = sum(incomes.filter(m => prevKeys.has(mk(m.date))), 'amount');
       const delta = revenuePrev ? Math.round(((revenue - revenuePrev) / revenuePrev) * 100) : null;
 
       const open = deals.filter(d => d.stage !== 'won' && d.stage !== 'lost');
@@ -82,12 +82,13 @@ window.Views = window.Views || {};
       const upcoming = openTasks.slice().sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).slice(0, 6);
 
       const revSeries = [
-        { name: 'Zaplaceno', cls: 's-primary', area: true, values: months.map(m => sum(paid.filter(i => paidMonth(i) === m.key), 'amount')) },
+        { name: 'Příjmy', cls: 's-primary', area: true, values: months.map(m => sum(incomes.filter(i => mk(i.date) === m.key), 'amount')) },
+        { name: 'Výdaje', cls: 's-red', values: months.map(m => sum(expenses.filter(i => mk(i.date) === m.key), 'amount')) },
         { name: 'Vystaveno', cls: 's-gray', dashed: true, values: months.map(m => sum(invoices.filter(i => i.status !== 'draft' && mk(i.issueDate) === m.key), 'amount')) },
       ];
       const actSeries = [
         { name: 'Noví klienti', cls: 's-violet', values: months.map(m => contacts.filter(c => mk(c.createdAt) === m.key).length) },
-        { name: 'Vyhrané obchody', cls: 's-green', values: months.map(m => won.filter(d => mk(d.wonDate) === m.key).length) },
+        { name: 'Vyhrané zakázky', cls: 's-green', values: months.map(m => won.filter(d => mk(d.wonDate) === m.key).length) },
       ];
 
       const pipeline = Schema.STAGES.filter(s => s.id !== 'won' && s.id !== 'lost').map(s => {
@@ -102,14 +103,14 @@ window.Views = window.Views || {};
         });
 
       const byClient = {};
-      paid.filter(i => i.contactId && keys.has(paidMonth(i)))
+      incomes.filter(i => i.contactId && keys.has(mk(i.date)))
         .forEach(i => { byClient[i.contactId] = (byClient[i.contactId] || 0) + (+i.amount || 0); });
       const top = Object.entries(byClient).sort((a, b) => b[1] - a[1]).slice(0, 5)
         .map(([id, value]) => ({ label: C.contactName(id) || '—', href: `#/contact/${encodeURIComponent(id)}`, value }));
 
       const s = Store.settings();
       const lastBackup = s.lastBackup ? new Date(s.lastBackup) : null;
-      const needBackup = !lastBackup || (Date.now() - lastBackup) / 864e5 > 14;
+      const needBackup = !Sync.active() && (!lastBackup || (Date.now() - lastBackup) / 864e5 > 14);
 
       const deltaHtml = delta == null
         ? `<span class="kpi-sub">${periodText}</span>`
@@ -126,19 +127,19 @@ window.Views = window.Views || {};
         </div>
 
         <div class="kpis">
-          <a class="kpi" href="#/invoices"><span class="kpi-label">Příjmy</span><span class="kpi-value">${money(revenue)}</span>${deltaHtml}</a>
-          <a class="kpi" href="#/deals"><span class="kpi-label">Otevřené obchody</span><span class="kpi-value">${money(sum(open, 'value'))}</span><span class="kpi-sub">${plural(open.length, 'obchod', 'obchody', 'obchodů')} v pipeline</span></a>
+          <a class="kpi" href="#/finance"><span class="kpi-label">Příjmy</span><span class="kpi-value">${money(revenue)}</span>${deltaHtml}</a>
+          <a class="kpi" href="#/deals"><span class="kpi-label">Otevřené zakázky</span><span class="kpi-value">${money(sum(open, 'value'))}</span><span class="kpi-sub">${plural(open.length, 'zakázka', 'zakázky', 'zakázek')} v pipeline</span></a>
           <a class="kpi" href="#/invoices"><span class="kpi-label">Čeká na úhradu</span><span class="kpi-value">${money(sum(unpaid, 'amount'))}</span><span class="kpi-sub ${overdue.length ? 'red' : ''}">${overdue.length ? plural(overdue.length, 'faktura', 'faktury', 'faktur') + ' po splatnosti' : 'nic po splatnosti'}</span></a>
-          <a class="kpi" href="#/deals"><span class="kpi-label">Úspěšnost obchodů</span><span class="kpi-value">${rate == null ? '—' : rate + ' %'}</span><span class="kpi-sub">${plural(wonInPeriod.length, 'vyhraný obchod', 'vyhrané obchody', 'vyhraných obchodů')} za období</span></a>
+          <a class="kpi" href="#/deals"><span class="kpi-label">Úspěšnost zakázek</span><span class="kpi-value">${rate == null ? '—' : rate + ' %'}</span><span class="kpi-sub">${plural(wonInPeriod.length, 'vyhraná zakázka', 'vyhrané zakázky', 'vyhraných zakázek')} za období</span></a>
         </div>
 
         <div class="ov-grid">
-          ${widget('Vývoj příjmů', Charts.legend(revSeries), '<div class="chart-box" id="ch-rev"></div>', 'span-2')}
-          ${widget('Pipeline podle fáze', link('#/deals', 'Obchody'),
+          ${widget('Příjmy a výdaje', Charts.legend(revSeries), '<div class="chart-box" id="ch-rev"></div>', 'span-2')}
+          ${widget('Pipeline podle fáze', link('#/deals', 'Zakázky'),
             Charts.donutBlock({ items: pipeline, center: money(sum(open, 'value')), centerLabel: 'otevřeno' }))}
           ${widget('Faktury podle stavu', link('#/invoices', 'Faktury'),
             Charts.donutBlock({ items: invStates, center: money(sum(periodInv, 'amount')), centerLabel: 'vystaveno' }))}
-          ${widget('Noví klienti a vyhrané obchody', Charts.legend(actSeries), '<div class="chart-box" id="ch-act"></div>')}
+          ${widget('Noví klienti a vyhrané zakázky', Charts.legend(actSeries), '<div class="chart-box" id="ch-act"></div>')}
           ${widget('Nejlepší klienti', link('#/contacts', 'Kontakty'),
             top.length ? Charts.hbars(top) : C.emptyState('Zatím bez plateb', 'V tomto období nikdo nezaplatil.'))}
         </div>

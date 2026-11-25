@@ -2,12 +2,12 @@
  * Pokud se mění tvar dat, zvyšte SCHEMA_VERSION a doplňte migraci v migrate(). */
 (function () {
   const KEY = 'crm-data-v1';
-  const SCHEMA_VERSION = 2; // 2: faktury mají attachments[]
-  const COLLECTIONS = ['contacts', 'deals', 'tasks', 'invoices'];
+  const SCHEMA_VERSION = 3; // 2: faktury mají attachments[], 3: kolekce transactions a media, faktury mají dealId
+  const COLLECTIONS = ['contacts', 'deals', 'tasks', 'invoices', 'transactions', 'media'];
 
   const empty = () => ({
     version: SCHEMA_VERSION,
-    contacts: [], deals: [], tasks: [], invoices: [],
+    contacts: [], deals: [], tasks: [], invoices: [], transactions: [], media: [],
     settings: { businessName: 'Moje CRM', currency: 'CZK', lastBackup: null },
   });
 
@@ -18,6 +18,7 @@
     COLLECTIONS.forEach(c => { if (!Array.isArray(out[c])) out[c] = []; });
     out.contacts.forEach(c => { c.tags = c.tags || []; c.activities = c.activities || []; });
     out.invoices.forEach(i => { i.attachments = i.attachments || []; });
+    out.transactions.forEach(t => { t.attachments = t.attachments || []; });
     delete out.files; // soubory ze zálohy patří do IndexedDB, ne do localStorage
     out.version = SCHEMA_VERSION;
     return out;
@@ -61,6 +62,11 @@
       save();
       return item;
     },
+    /** Přidá víc záznamů najednou (jedno uložení a překreslení). */
+    addMany(col, list) {
+      list.forEach(o => data[col].push(Object.assign({ id: uid(), createdAt: new Date().toISOString() }, o)));
+      save();
+    },
     update(col, id, patch) {
       const item = Store.get(col, id);
       if (!item) return null;
@@ -78,6 +84,18 @@
         data[c].forEach(x => { if (x.contactId === id) x.contactId = ''; }));
       Store.remove('contacts', id);
     },
+    /** Smaže zakázku a záznamy jejích fotek; faktury a pohyby zůstanou, jen se odpojí. Soubory maže Media.removeDeal. */
+    removeDeal(id) {
+      const now = new Date().toISOString();
+      ['invoices', 'transactions'].forEach(c =>
+        data[c].forEach(x => { if (x.dealId === id) { x.dealId = ''; x.updatedAt = now; } }));
+      data.media = data.media.filter(m => m.dealId !== id);
+      Store.remove('deals', id);
+    },
+    /** Doklady (přílohy faktur a pohybů): [{ id, name, type, size }]. */
+    docMetas: () => data.invoices.concat(data.transactions).flatMap(x => x.attachments || []),
+    /** Id všech souborů v úložišti, včetně fotek, videí a jejich náhledů (<id>-t). */
+    fileIds: () => Store.docMetas().map(a => a.id).concat(data.media.flatMap(m => (m.thumb ? [m.id + '-t', m.id] : [m.id]))),
     /** Celý datový objekt (jen pro čtení – používá synchronizace pro porovnání změn). */
     raw: () => data,
     /** Změny stažené z cloudu: [{ col, id, data | null }]. Přepíše/smaže záznamy a uloží jednou. */
@@ -109,7 +127,11 @@
     importJSON(text) {
       const obj = JSON.parse(text);
       if (!obj || !Array.isArray(obj.contacts)) throw new Error('Soubor nevypadá jako záloha CRM.');
+      const media = data.media;
       data = migrate(obj);
+      // Fotky a videa se obnovením nemažou (v záloze nejsou jejich soubory), pokud jejich zakázka dál existuje.
+      const have = new Set(data.media.map(m => m.id)), deals = new Set(data.deals.map(d => d.id));
+      data.media = data.media.concat(media.filter(m => !have.has(m.id) && deals.has(m.dealId)));
       save();
     },
     reset() {
@@ -134,11 +156,11 @@
 
       const y = String(now.getFullYear());
       const deal = o => push('deals', o);
-      deal({ title: 'Branding pobočky 2', contactId: jana, value: 45000, stage: 'offer', expectedDate: d(14) });
-      deal({ title: 'Web pro stavební firmu', contactId: petr, value: 80000, stage: 'negotiation', expectedDate: d(7) });
+      const branding = deal({ title: 'Branding pobočky 2', contactId: jana, value: 45000, stage: 'offer', expectedDate: d(14) });
+      const web = deal({ title: 'Web pro stavební firmu', contactId: petr, value: 80000, stage: 'negotiation', expectedDate: d(7) });
       deal({ title: 'Fotografie produktů', contactId: lucie, value: 12000, stage: 'lead', expectedDate: d(30) });
       deal({ title: 'Konzultace marketingu', contactId: martin, value: 6000, stage: 'contacted' });
-      deal({ title: 'Jídelní lístky', contactId: jana, value: 9000, stage: 'won', wonDate: d(-20) });
+      const listky = deal({ title: 'Jídelní lístky', contactId: jana, value: 9000, stage: 'won', wonDate: d(-20) });
 
       const task = o => push('tasks', Object.assign({ done: false, priority: 'normal' }, o));
       task({ title: 'Poslat nabídku na branding', contactId: jana, due: d(0), priority: 'high' });
@@ -152,9 +174,17 @@
       inv(902, { contactId: petr, amount: 24000, issueDate: d(-110), dueDate: d(-96), status: 'paid', paidDate: d(-100) });
       inv(903, { contactId: martin, amount: 6000, issueDate: d(-75), dueDate: d(-61), status: 'paid', paidDate: d(-65) });
       inv(904, { contactId: lucie, amount: 15000, issueDate: d(-45), dueDate: d(-31), status: 'paid', paidDate: d(-33) });
-      inv(905, { contactId: jana, amount: 9000, issueDate: d(-18), dueDate: d(-4), status: 'paid', paidDate: d(-3) });
-      inv(906, { contactId: petr, amount: 32000, issueDate: d(-20), dueDate: d(-6), status: 'sent' });
+      inv(905, { contactId: jana, dealId: listky, amount: 9000, issueDate: d(-18), dueDate: d(-4), status: 'paid', paidDate: d(-3) });
+      inv(906, { contactId: petr, dealId: web, amount: 32000, issueDate: d(-20), dueDate: d(-6), status: 'sent' });
       inv(907, { contactId: lucie, amount: 7500, issueDate: d(-2), dueDate: d(12), status: 'sent' });
+      const tr = o => push('transactions', Object.assign({ type: 'expense', attachments: [] }, o));
+      tr({ title: 'Tisk jídelních lístků', amount: 3200, date: d(-19), category: 'subcontract', vendor: 'Tiskárna', dealId: listky });
+      tr({ title: 'Papír a vazba', amount: 900, date: d(-21), category: 'material', dealId: listky });
+      tr({ title: 'Záloha na branding', type: 'income', amount: 15000, date: d(-5), dealId: branding });
+      tr({ title: 'Fotobanka', amount: 1800, date: d(-4), category: 'services', dealId: branding });
+      tr({ title: 'Doména a hosting', amount: 2400, date: d(-12), category: 'services', dealId: web });
+      tr({ title: 'Nájem kanceláře', amount: 6500, date: d(-35), category: 'rent' });
+      tr({ title: 'Pohonné hmoty', amount: 1700, date: d(-70), category: 'transport' });
       inv(908, { contactId: martin, amount: 4500, issueDate: d(0), dueDate: d(14), status: 'draft' });
       save();
     },

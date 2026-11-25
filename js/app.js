@@ -3,22 +3,25 @@
   const NAV = [
     ['dashboard', 'Domů', 'home'],
     ['contacts', 'Kontakty', 'users'],
-    ['deals', 'Obchody', 'kanban'],
+    ['deals', 'Zakázky', 'kanban'],
     ['tasks', 'Úkoly', 'check'],
     ['invoices', 'Faktury', 'file'],
+    ['finance', 'Finance', 'finance'],
   ];
   const CREATE = [
     ['contacts', 'Kontakt', 'users'],
-    ['deals', 'Obchod', 'kanban'],
+    ['deals', 'Zakázka', 'kanban'],
     ['tasks', 'Úkol', 'check'],
     ['invoices', 'Faktura', 'file'],
+    ['transactions', 'Výdaj', 'finance', { type: 'expense' }],
+    ['transactions', 'Příjem mimo faktury', 'finance', { type: 'income' }],
   ];
   const $ = id => document.getElementById(id);
 
   $('quick-create').innerHTML = UI.icon('plus');
   $('settings-link').innerHTML = UI.icon('sliders');
-  $('create-menu').innerHTML = '<div class="menu-title">Vytvořit</div>' + CREATE.map(([col, label, ic]) =>
-    `<button data-new="${col}">${UI.icon(ic)}<span>${label}</span></button>`).join('');
+  $('create-menu').innerHTML = '<div class="menu-title">Vytvořit</div>' + CREATE.map(([col, label, ic, preset]) =>
+    `<button data-new="${col}"${preset ? ` data-preset="${UI.esc(JSON.stringify(preset))}"` : ''}>${UI.icon(ic)}<span>${label}</span></button>`).join('');
 
   function renderNav(active) {
     $('nav-top').innerHTML = NAV.map(([id, label]) =>
@@ -94,10 +97,11 @@
     } else if (t.dataset.move) {
       Views.deals.move(t.dataset.move, +t.dataset.dir);
     } else if (t.dataset.openAttach) {
-      // Jedna příloha → rovnou otevřít, víc příloh → otevřít fakturu se seznamem.
-      const inv = Store.get('invoices', t.dataset.openAttach);
-      const list = (inv && inv.attachments) || [];
-      if (list.length === 1) Files.open(list[0]); else Schema.edit('invoices', inv.id);
+      // Jedna příloha → rovnou otevřít, víc příloh → otevřít záznam se seznamem.
+      const col = t.dataset.col || 'invoices';
+      const rec = Store.get(col, t.dataset.openAttach);
+      const list = (rec && rec.attachments) || [];
+      if (list.length === 1) Files.open(list[0]); else if (rec) Schema.edit(col, rec.id);
     } else if (t.dataset.markPaid) {
       const inv = Store.get('invoices', t.dataset.markPaid);
       Store.update('invoices', inv.id, Schema.derive('invoices', { status: 'paid' }, inv));
@@ -131,6 +135,19 @@
     const box = document.getElementById('sync-box');
     if (box && Views.settings.drawSync) Views.settings.drawSync(box);
   }
+
+  /* ---------- Světlý / tmavý vzhled ---------- */
+  function renderTheme() {
+    const dark = Theme.resolved() === 'dark';
+    const label = dark ? 'Přepnout na světlý vzhled' : 'Přepnout na tmavý vzhled';
+    $('theme-toggle').innerHTML = UI.icon(dark ? 'sun' : 'moon');
+    $('theme-toggle').title = label;
+    $('theme-toggle').setAttribute('aria-label', label);
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b.dataset.themeSet === Theme.get()));
+  }
+  $('theme-toggle').addEventListener('click', Theme.toggle);
+  Theme.onChange(renderTheme);
+  renderTheme();
 
   window.addEventListener('hashchange', () => { UI.closeModal(); menu.hidden = true; render(); window.scrollTo(0, 0); });
   Store.onChange(render);

@@ -1,4 +1,4 @@
-/* Přílohy faktur (PDF, obrázky…).
+/* Soubory: přílohy faktur a účtenky (PDF, obrázky…); ukládají se tu i fotky a videa zakázek (js/media.js).
  * Soubory se ukládají do IndexedDB (localStorage by na ně byl malý). U faktury je jen seznam
  * attachments: [{ id, name, type, size, addedAt }]; id je klíč souboru v IndexedDB. */
 (function () {
@@ -59,19 +59,30 @@
     if (!w) download(blob, name); // vyskakovací okna zablokovaná → stáhnout
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
+  /** Načte soubor z tohoto zařízení, nebo ho stáhne z cloudu (a uloží sem). */
+  async function load(att) {
+    const local = await get(att.id).catch(() => null);
+    if (local) return local;
+    if (!(window.Sync && Sync.active())) throw new Error(`Soubor „${att.name}“ v tomto zařízení není. Pokud jste ho přidali na jiném zařízení, přeneste ho zálohou.`);
+    let blob;
+    try { blob = await Sync.downloadFile(att); }
+    catch (e) { throw new Error(e.offline ? 'Soubor je v cloudu a jste offline. Zkuste to po připojení.' : `Soubor „${att.name}“ se nepodařilo stáhnout: ${e.message}`); }
+    put(att.id, blob).catch(() => {});
+    return blob;
+  }
+  /** Smaže z tohoto zařízení soubory, které nejsou v seznamu id. */
+  async function prune(keepIds) {
+    const keep = new Set(keepIds);
+    const keys = await tx('readonly', s => s.getAllKeys());
+    const gone = keys.filter(k => !keep.has(k));
+    if (gone.length) await removeLocal(gone);
+  }
+
   /** Otevře uloženou přílohu v nové kartě (PDF a obrázky se zobrazí, ostatní se stáhnou). */
   async function open(att) {
     const win = window.open('', '_blank'); // otevřít hned při kliknutí, jinak ho prohlížeč zablokuje
     try {
-      let blob = await get(att.id).catch(() => null);
-      if (!blob && window.Sync && Sync.active()) {
-        // Soubor je zatím jen v cloudu (přidaný na jiném zařízení) → stáhnout a uložit sem.
-        try { blob = await Sync.downloadFile(att); }
-        catch (e) { throw new Error(e.offline ? 'Soubor je v cloudu a jste offline. Zkuste to po připojení.' : `Soubor „${att.name}“ se nepodařilo stáhnout: ${e.message}`); }
-        put(att.id, blob).catch(() => {});
-      }
-      if (!blob) throw new Error(`Soubor „${att.name}“ v tomto zařízení není. Pokud jste ho přidali na jiném zařízení, přeneste ho zálohou.`);
-      openBlob(blob, att.name, win);
+      openBlob(await load(att), att.name, win);
     } catch (e) {
       if (win) win.close();
       alert(e.message);
@@ -93,11 +104,13 @@
     const mime = type || (head.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream';
     return new File([bytes], name || 'soubor', { type: mime });
   }
-  async function exportAll(metas) {
+  /** Vrátí soubory jako base64; názvy těch, co se nepodařilo načíst, přidá do missing. */
+  async function exportAll(metas, missing = []) {
     const out = {};
     for (const m of metas) {
-      const blob = await get(m.id);
-      if (blob) out[m.id] = { name: m.name, type: m.type || blob.type, data: await toDataURL(blob) };
+      const blob = await load(m).catch(() => null);
+      if (!blob) missing.push(m.name);
+      else out[m.id] = { name: m.name, type: m.type || blob.type, data: await toDataURL(blob) };
     }
     return out;
   }
@@ -112,14 +125,14 @@
 
   /* ---------- Editor příloh ve formuláři ----------
    * Změny se uloží až po kliknutí na „Uložit“ (commit). „Zrušit“ nic nemění. */
-  function editor(existing) {
+  function editor(existing, label = 'Soubory faktury') {
     const keep = existing.slice();
     const added = [];   // { file, meta }
     const removed = []; // id souborů ke smazání
     let listEl;
 
     const html = `<div class="field wide attach-field">
-      <label>Soubory faktury</label>
+      <label>${esc(label)}</label>
       <div class="attach-list" data-att-list></div>
       <label class="dropzone" data-att-drop>
         <input type="file" multiple hidden accept="${ACCEPT}" data-att-input>
@@ -185,5 +198,5 @@
     return { html, mount, commit };
   }
 
-  window.Files = { editor, open, remove, clear, exportAll, importAll, fmtSize, getLocal: get };
+  window.Files = { editor, open, load, put, persist, download, remove, clear, prune, exportAll, importAll, fmtSize, getLocal: get };
 })();

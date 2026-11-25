@@ -7,11 +7,12 @@ window.Views = window.Views || {};
   function dealCard(d, idx, last) {
     const contact = C.contactName(d.contactId);
     return `<article class="deal" draggable="true" data-deal="${d.id}">
-      <button class="deal-main" data-edit="deals" data-id="${d.id}">
+      <a class="deal-main" href="${C.dealHref(d.id)}" draggable="false">
         <span class="deal-title">${esc(d.title)}</span>
         ${contact ? `<span class="muted small">${esc(contact)}</span>` : ''}
         <span class="deal-meta"><strong>${money(d.value)}</strong>${d.expectedDate ? `<span class="muted small">${fmtDate(d.expectedDate)}</span>` : ''}</span>
-      </button>
+        ${C.mediaBadge(d.id)}
+      </a>
       <div class="deal-move">
         <button class="icon-btn sm" data-move="${d.id}" data-dir="-1" ${idx === 0 ? 'disabled' : ''} aria-label="Posunout do předchozí fáze">${icon('left')}</button>
         <button class="icon-btn sm" data-move="${d.id}" data-dir="1" ${idx === last ? 'disabled' : ''} aria-label="Posunout do další fáze">${icon('right')}</button>
@@ -26,7 +27,7 @@ window.Views = window.Views || {};
         const items = deals.filter(d => d.stage === s.id).sort((a, b) => (a.expectedDate || '9').localeCompare(b.expectedDate || '9'));
         return `<section class="col stage-${s.id}" data-stage="${s.id}">
           <header class="col-head"><div class="col-title"><h3>${esc(s.label)}</h3><span class="count">${items.length}</span></div><span class="col-sum">${money(sum(items, 'value'))}</span></header>
-          <div class="col-body">${items.map(d => dealCard(d, i, stages.length - 1)).join('') || '<div class="col-empty">Žádné obchody</div>'}</div>
+          <div class="col-body">${items.map(d => dealCard(d, i, stages.length - 1)).join('') || '<div class="col-empty">Žádné zakázky</div>'}</div>
           <button class="col-add" data-new="deals" data-preset="${esc(JSON.stringify({ stage: s.id }))}">${icon('plus')} Přidat</button>
         </section>`;
       }).join('')}
@@ -53,22 +54,22 @@ window.Views = window.Views || {};
   function renderList(el, deals) {
     const test = f => f === 'all' ? () => true : f === 'open' ? d => d.stage !== 'won' && d.stage !== 'lost' : d => d.stage === f;
     const items = [
-      { key: 'open', label: 'Otevřené obchody', count: deals.filter(test('open')).length },
-      { key: 'all', label: 'Všechny obchody', count: deals.length },
+      { key: 'open', label: 'Otevřené zakázky', count: deals.filter(test('open')).length },
+      { key: 'all', label: 'Všechny zakázky', count: deals.length },
       { group: 'Fáze' },
       ...Schema.STAGES.map(s => ({ key: s.id, label: s.label, count: deals.filter(test(s.id)).length })),
     ];
     const board = el.querySelector('#board');
     board.innerHTML = C.listShell(C.filterPanel('Zobrazit', items, state.filter),
-      C.search('Hledat obchody…', state.q) + '<span class="total" id="total"></span>');
+      C.search('Hledat zakázky…', state.q) + '<span class="total" id="total"></span>');
     const list = board.querySelector('#list');
     const draw = () => {
       const q = norm(state.q);
       const rows = deals.filter(test(state.filter)).filter(d => !q || norm([d.title, C.contactName(d.contactId), d.note].join(' ')).includes(q));
       board.querySelector('#total').textContent = `Celkem: ${rows.length} · ${money(sum(rows, 'value'))}`;
       list.innerHTML = C.table({
-        cols: C.cols.deals(), rows, sort: state.sort, rowAttrs: C.editAttrs('deals'),
-        empty: `<div class="card">${C.emptyState('Žádné obchody', 'V tomto filtru nic není.')}</div>`,
+        cols: C.cols.deals(), rows, sort: state.sort, rowAttrs: C.hrefAttrs(C.dealHref),
+        empty: `<div class="card">${C.emptyState('Žádné zakázky', 'V tomto filtru nic není.')}</div>`,
       });
       C.wireSort(list, state, draw);
     };
@@ -78,8 +79,8 @@ window.Views = window.Views || {};
   }
 
   Views.deals = {
-    title: 'Obchody',
-    actions: () => C.newBtn('deals', 'Obchod'),
+    title: 'Zakázky',
+    actions: () => C.newBtn('deals', 'Zakázka'),
     render(el) {
       const deals = Store.all('deals');
       const open = deals.filter(d => d.stage !== 'won' && d.stage !== 'lost');
@@ -93,7 +94,7 @@ window.Views = window.Views || {};
             <button role="tab" class="${state.mode === 'kanban' ? 'on' : ''}" data-mode="kanban">${icon('kanban')}<span>Kanban</span></button>
             <button role="tab" class="${state.mode === 'list' ? 'on' : ''}" data-mode="list">${icon('file')}<span>Seznam</span></button>
           </div>
-          <span class="summary"><strong>${money(sum(open, 'value'))}</strong> · ${UI.plural(open.length, 'otevřený obchod', 'otevřené obchody', 'otevřených obchodů')}${rate != null ? ` · úspěšnost ${rate} %` : ''}</span>
+          <span class="summary"><strong>${money(sum(open, 'value'))}</strong> · ${UI.plural(open.length, 'otevřená zakázka', 'otevřené zakázky', 'otevřených zakázek')}${rate != null ? ` · úspěšnost ${rate} %` : ''}</span>
         </div>
         <div id="board"></div>`;
       el.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; Views.deals.render(el); }));
@@ -102,7 +103,7 @@ window.Views = window.Views || {};
     moveTo(id, stage) {
       const d = Store.get('deals', id);
       Store.update('deals', id, Schema.derive('deals', { stage }, d));
-      UI.toast(stage === 'won' ? '🎉 Obchod vyhrán!' : 'Přesunuto: ' + C.stageLabel(stage));
+      UI.toast(stage === 'won' ? '🎉 Zakázka vyhrána!' : 'Přesunuto: ' + C.stageLabel(stage));
     },
     move(id, dir) {
       const d = Store.get('deals', id);

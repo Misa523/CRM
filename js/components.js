@@ -4,6 +4,8 @@
 
   const contactName = id => { const c = id && Store.get('contacts', id); return c ? c.name : ''; };
 
+  const dealTitle = id => { const d = id && Store.get('deals', id); return d ? d.title : ''; };
+
   function hue(str) {
     let h = 0;
     for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) % 360;
@@ -131,17 +133,38 @@
     ].filter(Boolean),
 
     deals: ({ contact = true } = {}) => [
-      { key: 'title', label: 'Název obchodu', cls: 'primary', sort: d => d.title, render: d => esc(d.title) },
+      { key: 'title', label: 'Název zakázky', cls: 'primary', sort: d => d.title, render: d => `<a class="cell-link" href="${dealHref(d.id)}">${esc(d.title)}</a>${mediaBadge(d.id)}` },
       contact && { key: 'contact', label: 'Kontakt', sort: d => contactName(d.contactId), render: d => esc(contactName(d.contactId)) },
       { key: 'stage', label: 'Fáze', sort: d => Schema.STAGES.findIndex(s => s.id === d.stage), render: d => stagePill(d.stage) },
-      { key: 'value', label: 'Hodnota', cls: 'num', sort: d => +d.value || 0, render: d => `<strong>${money(d.value)}</strong>` },
+      { key: 'value', label: 'Cena', cls: 'num', sort: d => +d.value || 0, render: d => `<strong>${money(d.value)}</strong>` },
+      { key: 'profit', label: 'Zisk', cls: 'num hide-md', sort: d => { const f = Finance.deal(d.id); return f.list.length ? f.profit : null; }, render: d => {
+        const f = Finance.deal(d.id);
+        return f.list.length ? `<span class="${f.profit < 0 ? 'red' : ''}">${money(f.profit)}</span>` : '';
+      } },
       { key: 'expectedDate', label: 'Očekávané uzavření', sort: d => d.expectedDate, render: d => d.expectedDate ? fmtDate(d.expectedDate) : '' },
     ].filter(Boolean),
+
+    /** Pohyby z Finance.movements() (faktury i transakce dohromady). */
+    movements: ({ deal = true } = {}) => [
+      { key: 'title', label: 'Pohyb', cls: 'primary', sort: m => m.title, render: m => esc(m.title) },
+      { key: 'date', label: 'Datum', sort: m => m.date, render: m => m.date ? fmtDate(m.date) : '' },
+      { key: 'category', label: 'Kategorie', sort: m => movementKind(m), render: m => pill(movementKind(m), m.type === 'income' ? 'green' : 'gray') },
+      deal && { key: 'deal', label: 'Zakázka', sort: m => dealTitle(m.dealId), render: m => m.dealId ? `<a class="cell-link" href="${dealHref(m.dealId)}">${esc(dealTitle(m.dealId))}</a>` : '' },
+      { key: 'vendor', label: 'Dodavatel / klient', cls: 'hide-md', sort: m => m.vendor || contactName(m.contactId), render: m => esc(m.vendor || contactName(m.contactId)) },
+      { key: 'files', label: 'Doklad', cls: 'c-files', sort: m => m.attachments.length || null, render: m => m.attachments.length
+        ? `<button class="clip" data-open-attach="${m.id}" data-col="${m.col}" aria-label="Otevřít doklad">${icon('clip')}<span>${m.attachments.length}</span></button>` : '' },
+      { key: 'amount', label: 'Částka', cls: 'num', sort: m => (m.type === 'income' ? m.amount : -m.amount), render: m =>
+        `<strong class="${m.type === 'income' ? 'green' : 'red'}">${m.type === 'income' ? '+' : '−'} ${money(m.amount)}</strong>` },
+    ].filter(Boolean),
   };
+  const movementKind = m => (m.type === 'income' ? (m.col === 'invoices' ? 'Faktura' : 'Příjem') : Schema.CATEGORIES[m.category] || 'Ostatní');
+  const dealHref = id => `#/deal/${encodeURIComponent(id)}`;
+  const mediaBadge = id => { const n = Media.count(id); return n ? ` <span class="media-badge" title="Fotky a videa">${icon('camera')}${n}</span>` : ''; };
+  const hrefAttrs = fn => r => `data-href="${fn(r.id)}"`;
   const editAttrs = col => r => `data-edit="${col}" data-id="${r.id}"`;
 
   window.C = {
-    contactName, avatar, pill, tags, emptyState, newBtn, search, stagePill, stageLabel, invoiceState,
+    contactName, dealTitle, dealHref, mediaBadge, movementKind, hrefAttrs, avatar, pill, tags, emptyState, newBtn, search, stagePill, stageLabel, invoiceState,
     checkBtn, due, table, wireSort, filterPanel, wireFilters, listShell, cols, editAttrs,
   };
 })();

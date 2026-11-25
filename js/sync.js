@@ -8,7 +8,7 @@
  * - Nejdřív se stahuje, pak odesílá. Konflikt (změna tady i v cloudu): vyhraje novější podle updatedAt.
  *   Smazání proti úpravě: vyhraje úprava (raději záznam zachovat).
  * - Smazání se posílá jako záznam s deleted = true, aby se o něm dozvěděla i ostatní zařízení.
- * - Soubory faktur se nahrávají do Storage (bucket „invoices“, složka <user_id>/).
+ * - Soubory (doklady, fotky, videa) se nahrávají do Storage (bucket „invoices“, složka <user_id>/) nezávisle na datech.
  */
 (function () {
   const cfg = window.CRM_CONFIG || {};
@@ -17,7 +17,11 @@
   const configured = !!(BASE && KEY);
   const AUTH_KEY = 'crm-auth-v1';
   const STATE_KEY = 'crm-sync-v1';
-  const COLS = ['contacts', 'deals', 'tasks', 'invoices'];
+  const COLS = ['contacts', 'deals', 'tasks', 'invoices', 'transactions', 'media'];
+  // Kolekce přidané později. Starší verze aplikace (zapomenutá na jiném zařízení) je nezná a omylem by je v cloudu
+  // označila za smazané. Skutečné smazání proto nese data.v; smazání bez něj se u těchto kolekcí ignoruje a vrátí zpět.
+  const NEW_COLS = ['transactions', 'media'];
+  const STATE_VER = 3;
   const BUCKET = 'invoices';
   const POLL_MS = 15000;
 
@@ -47,6 +51,12 @@
     'Invalid login credentials': 'Nesprávný e-mail nebo heslo.',
     'Email not confirmed': 'E-mail ještě není potvrzený.',
     'Signups not allowed for this instance': 'Registrace nových účtů je vypnutá.',
+  };
+
+  const API_MSG = (msg, status) => {
+    if (/permission denied for table/i.test(msg)) return 'V Supabase chybí práva k tabulce. Spusťte soubor supabase/schema.sql.';
+    if (status === 413 || /exceeded the maximum allowed size|too large/i.test(msg)) return 'Soubor je pro cloud moc velký. Spusťte v Supabase aktuální supabase/schema.sql (limit 50 MB).';
+    return msg;
   };
 
   /* ---------------- Přihlášení ---------------- */
@@ -105,7 +115,7 @@
       const txt = await r.text().catch(() => '');
       let msg = txt;
       try { const j = JSON.parse(txt); msg = j.message || j.error || txt; } catch (e) { /* text */ }
-      throw Object.assign(new Error(msg || r.statusText), { status: r.status });
+      throw Object.assign(new Error(API_MSG(msg, r.status) || r.statusText), { status: r.status });
     }
     return r;
   }
@@ -130,7 +140,7 @@
 
     const uid = session.user.id;
     const rows = up.map(x => { const [collection, id] = splitKey(x.k); return { user_id: uid, collection, id, data: x.data, deleted: false }; })
-      .concat(del.map(k => { const [collection, id] = splitKey(k); return { user_id: uid, collection, id, data: {}, deleted: true }; }));
+      .concat(del.map(k => { const [collection, id] = splitKey(k); return { user_id: uid, collection, id, data: { v: STATE_VER }, deleted: true }; }));
     for (let i = 0; i < rows.length; i += 500) {
       await api('/rest/v1/records?on_conflict=user_id,collection,id', {
         method: 'POST',
@@ -166,8 +176,13 @@
     let cursor = st.cursor ? new Date(st.cursor).getTime() : 0;
     for (const r of rows) {
       cursor = Math.max(cursor, new Date(r.updated_at).getTime());
+      if (r.collection !== 'settings' && !COLS.includes(r.collection)) continue; // novější verze aplikace: nesahat
       const k = `${r.collection}:${r.id}`;
       const local = m[k];
+      if (r.deleted && NEW_COLS.includes(r.collection) && !(r.data && r.data.v)) { // smazala omylem stará verze
+        if (local !== undefined) delete synced[k]; // → znovu se odešle
+        continue;
+      }
       const localJ = local !== undefined ? stable(local) : undefined;
       const remoteJ = r.deleted ? undefined : stable(r.data);
       if (remoteJ === synced[k]) continue;                       // v cloudu nic nového
@@ -189,33 +204,57 @@
     saveState();
   }
 
-  /* ---------------- Soubory faktur ---------------- */
+  /* ---------------- Soubory (doklady, fotky, videa) ---------------- */
   const objectPath = id => `${BUCKET}/${session.user.id}/${encodeURIComponent(id)}`;
 
+  let filesRunning = false;
+  const rejected = new Map(); // id → { e, at }: soubor odmítnutý cloudem, znovu až za 30 minut nebo ručně
+  /** Nahraje a smaže čekající soubory. Běží vedle synchronizace dat, aby ji velké video nebrzdilo. */
   async function processFiles() {
-    st.uploads = st.uploads || [];
-    while (st.uploads.length) {
-      const id = st.uploads[0];
-      const file = await Files.getLocal(id).catch(() => null);
-      if (file) {
-        await api(`/storage/v1/object/${objectPath(id)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
-          body: file,
-        });
+    if (filesRunning || !active() || !((st.uploads || []).length || (st.fileDeletes || []).length)) return;
+    filesRunning = true;
+    let problem = null;
+    try {
+      const tried = new Set();
+      for (;;) {
+        const id = (st.uploads || []).find(x => !tried.has(x));
+        if (!id) break;
+        tried.add(id);
+        const no = rejected.get(id);
+        if (no && Date.now() - no.at < 1800000) { problem = no.e; continue; }
+        setStatus('syncing');
+        const file = await Files.getLocal(id);
+        try {
+          if (file) {
+            await api(`/storage/v1/object/${objectPath(id)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+              body: file,
+            });
+          }
+        } catch (e) {
+          if (e.offline || e.auth || !(e.status >= 400 && e.status < 500)) throw e;
+          rejected.set(id, { e, at: Date.now() });
+          problem = e; // odmítnutý soubor (např. moc velký) nesmí zastavit ostatní
+          continue;
+        }
+        if (!active()) return;
+        st.uploads = st.uploads.filter(x => x !== id);
+        saveState();
       }
-      st.uploads.shift();
-      saveState();
-    }
-    if ((st.fileDeletes || []).length) {
-      await api(`/storage/v1/object/${BUCKET}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prefixes: st.fileDeletes.map(id => `${session.user.id}/${id}`) }),
-      });
-      st.fileDeletes = [];
-      saveState();
-    }
+      const del = (st.fileDeletes || []).slice();
+      if (del.length) {
+        await api(`/storage/v1/object/${BUCKET}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefixes: del.map(id => `${session.user.id}/${id}`) }),
+        });
+        st.fileDeletes = (st.fileDeletes || []).filter(x => !del.includes(x));
+        saveState();
+      }
+      if (problem) throw problem;
+      if (!running) setStatus('ok');
+    } catch (e) { fail(e); } finally { filesRunning = false; }
   }
   function queueUpload(id) {
     if (!active()) return;
@@ -242,22 +281,26 @@
     if (!active()) return;
     if (running) { again = true; return; }
     running = true;
+    upgradeState();
     setStatus('syncing');
     try {
       await pull();
       await push();
-      await processFiles();
       st.lastSync = new Date().toISOString();
       saveState();
-      setStatus('ok');
-    } catch (e) {
-      if (e.offline) setStatus('offline', 'Jste offline. Změny se odešlou po připojení.');
-      else if (e.auth) setStatus('error', e.message);
-      else { console.error('Synchronizace:', e); setStatus('error', e.message); }
-    } finally {
+      const files = (st.uploads || []).length || (st.fileDeletes || []).length;
+      if (!files) setStatus('ok');
+      else if (filesRunning) setStatus('syncing');
+      else processFiles();
+    } catch (e) { fail(e); } finally {
       running = false;
       if (again) { again = false; syncNow(); }
     }
+  }
+  function fail(e) {
+    if (e.offline) setStatus('offline', 'Jste offline. Změny se odešlou po připojení.');
+    else if (e.auth) setStatus('error', e.message);
+    else { console.error('Synchronizace:', e); setStatus('error', e.message); }
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(syncNow, 700); }
 
@@ -306,10 +349,20 @@
       // Lokální nastavení bereme jako „beze změny“, aby se převzalo to z cloudu.
       if (mode === 'download') st.synced['settings:main'] = stable(Store.raw().settings);
     } else {
-      // Nahrát i soubory faktur z tohoto zařízení.
-      st.uploads = Store.all('invoices').flatMap(i => (i.attachments || []).map(a => a.id));
+      // Nahrát i soubory z tohoto zařízení (doklady, fotky, videa).
+      st.uploads = Store.fileIds();
     }
     st.initialized = true;
+    st.ver = STATE_VER;
+    saveState();
+  }
+
+  /** Po aktualizaci ze starší verze: nové kolekce stáhnout celé (stará verze je při stahování přeskočila). */
+  function upgradeState() {
+    if ((st.ver || 0) >= STATE_VER) return;
+    Object.keys(st.synced || {}).forEach(k => { if (NEW_COLS.includes(splitKey(k)[0])) delete st.synced[k]; });
+    st.cursor = null;
+    st.ver = STATE_VER;
     saveState();
   }
 
@@ -327,10 +380,11 @@
 
   async function afterLogin() {
     if (st.userId !== session.user.id) {
-      st = { userId: session.user.id, initialized: false, synced: {}, cursor: null, uploads: [], fileDeletes: [] };
+      st = { userId: session.user.id, initialized: false, synced: {}, cursor: null, uploads: [], fileDeletes: [], ver: STATE_VER };
       saveState();
     }
     if (!st.initialized) await firstSync();
+    upgradeState();
     setStatus('idle');
     await syncNow();
   }
@@ -404,7 +458,7 @@
     needsLogin: () => configured && !session,
     /** Spustí se při startu aplikace (po přihlášení). */
     start: tick,
-    syncNow: () => (session && !active() ? start() : syncNow()),
+    syncNow: () => { rejected.clear(); return session && !active() ? start() : syncNow(); },
     showLogin, signOut, queueUpload, queueDelete, downloadFile,
     user: () => session && session.user,
     status: () => ({ status, message: statusMsg, lastSync: st.lastSync || null, pending: pendingCount() }),
@@ -417,6 +471,6 @@
     let n = 0;
     for (const k in m) if (s[k] !== stable(m[k])) n++;
     for (const k in s) if (!(k in m)) n++;
-    return n + (st.uploads || []).length;
+    return n + (st.uploads || []).length + (st.fileDeletes || []).length;
   }
 })();
