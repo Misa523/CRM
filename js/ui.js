@@ -50,14 +50,17 @@
   const today = () => localISO();
   const parseDate = s => new Date(s.length === 10 ? s + 'T00:00' : s);
   const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return localISO(d); };
+  // Data se v celé aplikaci zobrazují jako dd/mm/rrrr (např. 27/11/2026), stejně jako ve formulářích.
+  const z2 = n => String(n).padStart(2, '0');
+  const dmy = d => `${z2(d.getDate())}/${z2(d.getMonth() + 1)}/${d.getFullYear()}`;
   const fmtDate = s => {
     if (!s) return '—';
     const d = parseDate(s);
-    return isNaN(d) ? '—' : d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    return isNaN(d) ? '—' : dmy(d);
   };
   const fmtDateTime = s => {
     const d = new Date(s);
-    return isNaN(d) ? '' : d.toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return isNaN(d) ? '' : `${dmy(d)} ${z2(d.getHours())}:${z2(d.getMinutes())}`;
   };
   const daysWord = n => (n === 1 ? 'den' : n >= 2 && n <= 4 ? 'dny' : 'dní');
   const relDue = s => {

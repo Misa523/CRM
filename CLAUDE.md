@@ -48,7 +48,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 - Data uživatele jsou reálná. **Při změně tvaru dat** zvyš `SCHEMA_VERSION` ve `store.js` a doplň převod v `migrate()`, aby stará data i staré zálohy fungovaly dál. Nikdy existující data nemaž ani nepřejmenovávej pole bez migrace.
 
 ## Konvence
-- Celé UI je česky. Peníze přes `UI.money()`, data přes `UI.fmtDate()`. Datum ukládej jako `YYYY-MM-DD`.
+- Celé UI je česky. Peníze přes `UI.money()`, data přes `UI.fmtDate()` / `UI.fmtDateTime()` – všude ve tvaru **dd/mm/rrrr** (27/11/2026), stejně jako pole data ve formulářích (`UI.dateInput`, typ pole `date`). Datum ukládej jako `YYYY-MM-DD`.
 - Veškerý uživatelský text vkládaný do HTML musí jít přes `UI.esc()`.
 - Akce přes atributy: `data-new="col"` (+ `data-preset` JSON), `data-edit="col" data-id`, `data-toggle-task`, `data-move`, `data-mark-paid`. Obsluhu najdeš v `app.js`.
 - Po každém `Store.add/update/remove` se aktuální obrazovka sama překreslí (`Store.onChange`).
