@@ -681,6 +681,95 @@ label.field.check-row { color: var(--text); font-weight: 500; }
 .claim-foot { flex-wrap: wrap; }
 .claim-foot .btn { flex: 1 1 auto; }
 
+/* ================= Průběh zakázky ================= */
+.progress-card { padding: 14px 16px; }
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.step {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 6px 10px; text-align: center;
+  border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted);
+}
+.step:hover { background: var(--hover); }
+.step i { width: 20px; height: 20px; flex: none; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11.5px; background: var(--gray-soft); }
+.step i .ico { width: 11px; height: 11px; stroke-width: 3; }
+.step.past { color: var(--text); }
+.step.past i { background: var(--green-soft); color: var(--green); }
+.step.on { border-color: var(--c); color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.step.on i { background: var(--c); color: var(--surface); }
+.progress-hint { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 13.5px; }
+.tag .ico { width: 12px; height: 12px; vertical-align: -1px; }
+.col-more { margin: 4px 0 0; text-align: center; }
+.stage-planned { --stage: var(--blue); }
+.stage-active { --stage: var(--amber); }
+.stage-done { --stage: var(--violet); }
+.stage-invoiced { --stage: var(--green); }
+
+/* Události (kalendář, týden, seznam dne) */
+.ev-blue { --ev: var(--blue); --ev-soft: var(--blue-soft); }
+.ev-amber { --ev: var(--amber); --ev-soft: var(--amber-soft); }
+.ev-violet { --ev: var(--violet); --ev-soft: var(--violet-soft); }
+.ev-green { --ev: var(--green); --ev-soft: var(--green-soft); }
+.ev-red { --ev: var(--red); --ev-soft: var(--red-soft); }
+.ev-gray { --ev: var(--gray); --ev-soft: var(--gray-soft); }
+.ag-row, .issue { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border-top: 1px solid var(--border); }
+.ag-row:first-child, .issue:first-child { border-top: 0; }
+.ag-row { border-left: 3px solid var(--ev); }
+.ag-row:hover, .issue:hover { background: var(--hover); }
+.ag-row > .ico { color: var(--ev); }
+.ag-row.finished b { text-decoration: line-through; color: var(--muted); }
+.ag-row.tentative { border-left-style: dashed; }
+.ag-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ag-text b { font-weight: 600; overflow-wrap: anywhere; }
+.ag-text small { color: var(--muted); font-size: 12.5px; }
+.ag-when { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.issue { cursor: pointer; flex-wrap: wrap; }
+.issue .ag-text { flex-basis: 150px; }
+
+/* ================= Kalendář ================= */
+.cal-bar { justify-content: space-between; }
+.cal-nav { display: flex; align-items: center; gap: 4px; }
+.cal-nav h2 { font-size: 17px; min-width: 150px; text-align: center; }
+.cal-nav h2::first-letter { text-transform: uppercase; }
+.cal-nav .btn { margin-left: 6px; }
+.cal-show { display: flex; gap: 6px; flex-wrap: wrap; }
+.cal-show .filter { width: auto; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 99px; background: var(--surface); box-shadow: none; }
+.cal-show .filter.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.cal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.cal { overflow: hidden; }
+.cal-head { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.cal-head span { padding: 8px 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.cal-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: 30px repeat(3, 24px) minmax(18px, auto); row-gap: 2px; min-height: 124px; border-bottom: 1px solid var(--border); }
+.cal-week:last-child { border-bottom: 0; }
+.cal-day { grid-row: 1 / -1; position: relative; display: flex; flex-direction: column; align-items: flex-start; padding: 4px 6px; border-right: 1px solid var(--border); min-width: 0; }
+.cal-day:nth-child(7) { border-right: 0; }
+.cal-day:hover { background: var(--hover); }
+.cal-day.weekend { background: var(--surface-2); }
+.cal-day.sel { background: var(--primary-soft); box-shadow: inset 0 0 0 2px var(--primary); }
+.cal-day.out .cal-num { color: var(--muted); opacity: .6; }
+.cal-num { min-width: 24px; height: 24px; padding: 0 4px; display: grid; place-items: center; border-radius: 99px; font-size: 13px; font-weight: 600; }
+.cal-day.today .cal-num { background: var(--primary); color: #fff; opacity: 1; }
+.cal-dots { display: none; gap: 3px; height: 6px; }
+.cal-dots i, .cal-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--ev); }
+.cal-more { position: absolute; left: 10px; bottom: 2px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.cal-ev {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 5px; margin: 0 4px; padding: 0 7px; min-width: 0;
+  border-radius: 5px; border-left: 3px solid var(--ev); background: var(--ev-soft); color: var(--ev); font-size: 12px; font-weight: 600;
+}
+.cal-ev span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ev .ico { width: 12px; height: 12px; }
+.cal-ev:hover { filter: brightness(.96); }
+.cal-ev.cut-l { margin-left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.cal-ev.cut-r { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cal-ev.tentative { background: transparent; border: 1px dashed var(--ev); }
+.cal-ev.finished { opacity: .6; text-decoration: line-through; }
+.cal-agenda { position: sticky; top: calc(var(--appbar-h) + 16px); overflow: hidden; }
+.cal-agenda h3::first-letter { text-transform: uppercase; }
+.ag-list { max-height: 60vh; overflow-y: auto; }
+.ag-add { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.cal-legend i.tentative { background: none; border: 1px dashed var(--ev); }
+
 /* Finance */
 .fin-deals { margin-bottom: 20px; overflow: hidden; }
 .fin-deals .table-wrap { border: 0; border-radius: 0; box-shadow: none; }
@@ -727,6 +816,9 @@ label.field.check-row { color: var(--text); font-weight: 500; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fin-ov > * { grid-column: 1 / -1; }
+  .cal-layout { grid-template-columns: minmax(0, 1fr); }
+  .cal-agenda { position: static; }
+  .ag-list { max-height: none; }
   .list-layout, .record-body { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .filters { position: static; padding: 0; background: none; border: 0; }
   .filters-title, .filters-group { display: none; }
@@ -754,6 +846,14 @@ label.field.check-row { color: var(--text); font-weight: 500; }
 /* Telefon */
 @media (max-width: 720px) {
   .modules { display: none; }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cal-bar { gap: 10px; }
+  .cal-nav { width: 100%; }
+  .cal-nav h2 { flex: 1; min-width: 0; }
+  .cal-week { grid-template-rows: auto; min-height: 0; }
+  .cal-ev, .cal-more { display: none; }
+  .cal-day { min-height: 52px; align-items: center; justify-content: center; gap: 4px; padding: 4px 0; }
+  .cal-dots { display: flex; }
   .brand span:last-child { display: inline; }
   .appbar { gap: 10px; }
 
@@ -765,7 +865,7 @@ label.field.check-row { color: var(--text); font-weight: 500; }
   .nav-item {
     flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     height: var(--tabbar-h); padding: 6px 2px;
-    color: var(--muted); font-size: 10.5px; font-weight: 600;
+    color: var(--muted); font-size: 10px; letter-spacing: -.01em; font-weight: 600;
   }
   .nav-item.active { color: var(--primary); }
   .nav-item .ico { width: 21px; height: 21px; }

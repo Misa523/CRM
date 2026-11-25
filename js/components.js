@@ -135,7 +135,8 @@
     deals: ({ contact = true } = {}) => [
       { key: 'title', label: 'Název zakázky', cls: 'primary', sort: d => d.title, render: d => `<a class="cell-link" href="${dealHref(d.id)}">${esc(d.title)}</a>${mediaBadge(d.id)}` },
       contact && { key: 'contact', label: 'Kontakt', sort: d => contactName(d.contactId), render: d => esc(contactName(d.contactId)) },
-      { key: 'stage', label: 'Fáze', sort: d => Schema.STAGES.findIndex(s => s.id === d.stage), render: d => stagePill(d.stage) },
+      { key: 'stage', label: 'Fáze', sort: d => Schema.STAGES.findIndex(s => s.id === d.stage) + (d.stage === 'won' ? Planning.PROGRESS.findIndex(p => p.id === Planning.of(d)) / 10 : 0), render: d => Planning.pill(d) },
+      { key: 'term', label: 'Termín práce', cls: 'hide-md', sort: d => Planning.start(d), render: d => Planning.term(d) },
       { key: 'value', label: 'Cena', cls: 'num', sort: d => +d.value || 0, render: d => `<strong>${money(d.value)}</strong>` },
       { key: 'profit', label: 'Zisk', cls: 'num hide-md', sort: d => { const f = Finance.deal(d.id); return f.list.length ? f.profit : null; }, render: d => {
         const f = Finance.deal(d.id);

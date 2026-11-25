@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → media → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → planning → media → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -19,6 +19,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/files.js` | Přílohy: IndexedDB, `Files.editor()` (sekce ve formuláři faktury, ukládá až při „Uložit“), `Files.open()`, export a import do zálohy |
 | `js/theme.js` | Světlý / tmavý vzhled / podle zařízení (`Theme`). Nastavuje `data-theme` na `<html>`, volba je jen v tomto zařízení (`crm-theme`) |
 | `js/finance.js` | Výpočty: `Finance.movements()` (zaplacené faktury + transakce), `totals`, `deal(id)`, marže. Příjmy a výdaje počítej **vždy** přes něj, ať čísla na Domů, ve Financích a v zakázce sedí |
+| `js/planning.js` | Průběh vyhrané zakázky (`Planning.PROGRESS`, `of`, `set`, `pill`), termíny, upozornění (`issues`) a události kalendáře (`events`) |
 | `js/media.js` | Fotky a videa zakázek i kontaktů (před/po/škoda/ostatní), náhledy, prohlížeč, „Pro pojišťovnu“ (sdílení, ZIP, protokol k tisku). Originály se nesmí měnit (důkaz) |
 | `js/zip.js` | Vytvoření ZIPu bez knihoven |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
@@ -28,7 +29,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/app.js` | Hash router (`#/stranka/id`), horní lišta s moduly, menu „Vytvořit“ (+), globální `data-*` akce |
 
 ## Vzhled (styl firemního CRM)
-- Tmavá horní lišta s moduly (Domů, Kontakty, Zakázky, Úkoly, Faktury, Finance), vpravo přepínač vzhledu, „+“ pro rychlé vytvoření a ikona Nastavení. Kolekce `deals` se v UI jmenuje **Zakázky**, detail je `#/deal/<id>`.
+- Tmavá horní lišta s moduly (Domů, Kontakty, Zakázky, Kalendář, Úkoly, Faktury, Finance), vpravo přepínač vzhledu, „+“ pro rychlé vytvoření a ikona Nastavení. Kolekce `deals` se v UI jmenuje **Zakázky**, detail je `#/deal/<id>`.
 - Seznamy = tabulka (`C.table`) s filtračním panelem vlevo a hledáním nahoře. Řádek otevře záznam (`data-href` nebo `data-edit`).
 - Detail kontaktu = karta záznamu: hlavička s akcemi, vlevo „Související seznamy“, vpravo sekce s poli a souvisejícími tabulkami.
 - Nový seznam stav stejně: `C.listShell(C.filterPanel(...), toolbar)` a do `#list` vlož `C.table(...)`.
@@ -38,7 +39,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Datový model
 - `contacts`: `name, company, email, phone, ico, address, tags[], note, activities[{id,date,text}]`
-- `deals`: `title, contactId, value, stage (lead|contacted|offer|negotiation|won|lost), expectedDate, wonDate, note`
+- `deals`: `title, contactId, value, stage (lead|contacted|offer|negotiation|won|lost), expectedDate, wonDate, dateFrom, dateTo (termín práce), progress (planned|active|done|invoiced – platí jen pro won, chybějící = planned), note`
 - `deals` i `contacts` mají navíc volitelné `claim {date, number, text}` (pojistná událost)
 - `transactions`: `type (income|expense), title, amount, date, dealId, category (Schema.CATEGORIES), vendor, note, attachments[]`
 - `media`: `id (= id souboru), dealId nebo contactId (vlastník, druhé je prázdné), phase (before|after|damage|other), kind (photo|video), name, type, size, takenAt (z EXIF, jinak null), camera, duration, thumb, note`. Náhled je soubor `<id>-t`.

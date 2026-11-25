@@ -108,6 +108,18 @@ window.Views = window.Views || {};
       const top = Object.entries(byClient).sort((a, b) => b[1] - a[1]).slice(0, 5)
         .map(([id, value]) => ({ label: C.contactName(id) || '—', href: `#/contact/${encodeURIComponent(id)}`, value }));
 
+      /* Zakázky, které na něco čekají, a program na týden */
+      const issues = Planning.issues();
+      const ACTION = { active: 'Začít', done: 'Hotovo' };
+      const issueRow = ({ deal: d, text, color, action }) => `<div class="issue" data-href="${C.dealHref(d.id)}">
+        <span class="ag-text"><a class="cell-link" href="${C.dealHref(d.id)}"><b>${esc(d.title)}</b></a><small>${esc(C.contactName(d.contactId))}</small></span>${C.pill(text, color)}
+        ${action === 'invoice' ? `<button class="btn xs" data-new="invoices" data-preset="${esc(JSON.stringify(Planning.invoicePreset(d)))}">${icon('plus')}<span>Faktura</span></button>`
+          : action === 'edit' ? `<button class="btn xs" data-edit="deals" data-id="${esc(d.id)}">${icon('calendar')}<span>Termín</span></button>`
+          : `<button class="btn xs" data-progress="${action}" data-id="${esc(d.id)}">${icon('tick')}<span>${ACTION[action]}</span></button>`}</div>`;
+      const until = UI.addDays(t, 6);
+      const week = Planning.events(t, until).filter(e => e.cls !== 'finished').sort((a, b) => (a.from < t ? t : a.from).localeCompare(b.from < t ? t : b.from)).slice(0, 8)
+        .map(e => Planning.row(e, `<span class="ag-when">${e.from <= t ? 'dnes' : esc(UI.relDue(e.from))}</span>`)).join('');
+
       const s = Store.settings();
       const lastBackup = s.lastBackup ? new Date(s.lastBackup) : null;
       const needBackup = !Sync.active() && (!lastBackup || (Date.now() - lastBackup) / 864e5 > 14);
@@ -145,6 +157,9 @@ window.Views = window.Views || {};
         </div>
 
         <div class="dash-grid">
+          ${widget('Zakázky k řešení', link('#/deals', 'Zakázky'), issues.length ? issues.slice(0, 6).map(issueRow).join('') + (issues.length > 6 ? `<p class="muted small sec-empty">a další ${issues.length - 6}</p>` : '')
+            : C.emptyState('Vše v pořádku', 'Žádná zakázka na vás nečeká.'), 'flush')}
+          ${widget('Nejbližších 7 dní', link('#/calendar', 'Kalendář'), week || C.emptyState('Nic v plánu', 'Na příštích 7 dní není nic naplánováno.'), 'flush')}
           ${widget('Moje otevřené úkoly', link('#/tasks', 'Zobrazit vše'),
             C.table({ cols: C.cols.tasks(), rows: upcoming, rowAttrs: C.editAttrs('tasks'), empty: C.emptyState('Hotovo!', 'Nemáte žádné otevřené úkoly.') }), 'flush')}
           ${widget('Faktury po splatnosti', link('#/invoices', 'Faktury'),

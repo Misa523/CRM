@@ -161,7 +161,10 @@
       const web = deal({ title: 'Web pro stavební firmu', contactId: petr, value: 80000, stage: 'negotiation', expectedDate: d(7) });
       deal({ title: 'Fotografie produktů', contactId: lucie, value: 12000, stage: 'lead', expectedDate: d(30) });
       deal({ title: 'Konzultace marketingu', contactId: martin, value: 6000, stage: 'contacted' });
-      const listky = deal({ title: 'Jídelní lístky', contactId: jana, value: 9000, stage: 'won', wonDate: d(-20) });
+      const listky = deal({ title: 'Jídelní lístky', contactId: jana, value: 9000, stage: 'won', wonDate: d(-20), progress: 'invoiced', dateFrom: d(-24), dateTo: d(-19) });
+      deal({ title: 'Polep výlohy', contactId: jana, value: 14000, stage: 'won', wonDate: d(-6), progress: 'active', dateFrom: d(-2), dateTo: d(3) });
+      deal({ title: 'Vizitky a hlavičkový papír', contactId: petr, value: 5500, stage: 'won', wonDate: d(-9), progress: 'done', dateFrom: d(-5), dateTo: d(-1) });
+      deal({ title: 'Focení interiéru', contactId: martin, value: 8000, stage: 'won', wonDate: d(-3), progress: 'planned', dateFrom: d(6), dateTo: d(7) });
 
       const task = o => push('tasks', Object.assign({ done: false, priority: 'normal' }, o));
       task({ title: 'Poslat nabídku na branding', contactId: jana, due: d(0), priority: 'high' });

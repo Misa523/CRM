@@ -4,6 +4,7 @@
     ['dashboard', 'Domů', 'home'],
     ['contacts', 'Kontakty', 'users'],
     ['deals', 'Zakázky', 'kanban'],
+    ['calendar', 'Kalendář', 'calendar'],
     ['tasks', 'Úkoly', 'check'],
     ['invoices', 'Faktury', 'file'],
     ['finance', 'Finance', 'finance'],
@@ -82,7 +83,7 @@
       return;
     }
 
-    const t = e.target.closest('[data-new], [data-edit], [data-toggle-task], [data-move], [data-mark-paid], [data-open-attach]');
+    const t = e.target.closest('[data-new], [data-edit], [data-toggle-task], [data-move], [data-progress], [data-move-progress], [data-mark-paid], [data-open-attach]');
     if (!t) return;
     e.preventDefault();
     if (t.dataset.new) {
@@ -96,6 +97,10 @@
       UI.toast(task.done ? 'Úkol dokončen ✓' : 'Úkol znovu otevřen');
     } else if (t.dataset.move) {
       Views.deals.move(t.dataset.move, +t.dataset.dir);
+    } else if (t.dataset.progress) {
+      Planning.set(t.dataset.id, t.dataset.progress);
+    } else if (t.dataset.moveProgress) {
+      Views.deals.moveProgress(t.dataset.moveProgress, +t.dataset.dir);
     } else if (t.dataset.openAttach) {
       // Jedna příloha → rovnou otevřít, víc příloh → otevřít záznam se seznamem.
       const col = t.dataset.col || 'invoices';
@@ -106,6 +111,7 @@
       const inv = Store.get('invoices', t.dataset.markPaid);
       Store.update('invoices', inv.id, Schema.derive('invoices', { status: 'paid' }, inv));
       UI.toast('Faktura označena jako zaplacená');
+      Planning.afterInvoice(Store.get('invoices', inv.id));
     }
   });
 

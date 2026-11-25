@@ -52,9 +52,12 @@
         { name: 'value', label: 'Cena zakázky', type: 'number' },
         { name: 'stage', label: 'Fáze', type: 'select', options: STAGES.map(s => ({ value: s.id, label: s.label })) },
         { name: 'expectedDate', label: 'Očekávané uzavření', type: 'date' },
+        { name: 'dateFrom', label: 'Práce od', type: 'date' },
+        { name: 'dateTo', label: 'Práce do', type: 'date' },
+        { name: 'progress', label: 'Průběh (u vyhrané zakázky)', type: 'select', options: Planning.PROGRESS.map(p => ({ value: p.id, label: p.label })) },
         { name: 'note', label: 'Poznámka', type: 'textarea' },
       ],
-      defaults: () => ({ stage: 'lead' }),
+      defaults: () => ({ stage: 'lead', progress: 'planned' }),
     },
     tasks: {
       newTitle: 'Nový úkol', editTitle: 'Upravit úkol',
@@ -109,6 +112,7 @@
       if (deal && deal.contactId) values.contactId = deal.contactId; // odběratel podle zakázky
     }
     if (col === 'deals') {
+      if (values.dateFrom && values.dateTo && values.dateTo < values.dateFrom) [values.dateFrom, values.dateTo] = [values.dateTo, values.dateFrom];
       if (values.stage === 'won' && !(prev && prev.wonDate)) values.wonDate = UI.today();
       if (values.stage !== 'won') values.wonDate = null;
     }
@@ -138,6 +142,7 @@
         }
         if (item) { Store.update(col, id, derive(col, values, item)); UI.toast('Uloženo'); }
         else { Store.add(col, derive(col, Object.assign(ent.defaults(), preset, values), null)); UI.toast('Přidáno'); }
+        if (col === 'invoices') Planning.afterInvoice(values);
       },
       onDelete: item ? () => {
         if (col === 'contacts') {

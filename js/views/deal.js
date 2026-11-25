@@ -19,6 +19,7 @@ window.Views = window.Views || {};
       const media = Media.count(id);
       const price = +d.value || 0;
       const expected = price - f.expense;
+      const stepIdx = Planning.PROGRESS.findIndex(p => p.id === Planning.of(d));
       const preset = o => esc(JSON.stringify(o));
 
       const field = (label, value) => `<div><dt>${label}</dt><dd>${value || '<span class="muted">—</span>'}</dd></div>`;
@@ -31,7 +32,7 @@ window.Views = window.Views || {};
           <div class="record-title">
             <h1>${esc(d.title)}</h1>
             <div class="muted">${contact ? `<a class="cell-link" href="#/contact/${encodeURIComponent(contact.id)}">${esc(contact.name)}</a>${contact.company ? ' · ' + esc(contact.company) : ''}` : 'bez kontaktu'}</div>
-            <div class="tags">${C.stagePill(d.stage)}</div>
+            <div class="tags">${Planning.pill(d)}${Planning.term(d) ? `<span class="tag">${icon('calendar')} ${Planning.term(d)}</span>` : ''}</div>
           </div>
           <div class="record-actions">
             <button class="btn" id="claim" ${media ? '' : 'disabled title="Nejdřív přidejte fotky nebo videa"'}>${icon('shield')}<span>Pro pojišťovnu</span></button>
@@ -49,6 +50,12 @@ window.Views = window.Views || {};
           </nav>
 
           <div class="record-main">
+            ${d.stage === 'won' ? `<section class="card progress-card">
+              <div class="steps" role="group" aria-label="Průběh zakázky">${Planning.PROGRESS.map((p, i) =>
+                `<button class="step s-${p.color}${i < stepIdx ? ' past' : ''}${i === stepIdx ? ' on' : ''}" data-progress="${p.id}" data-id="${esc(id)}" aria-pressed="${i === stepIdx}"><i>${i < stepIdx ? icon('tick') : i + 1}</i><span>${p.label}</span></button>`).join('')}</div>
+              ${Planning.of(d) === 'done' ? `<div class="progress-hint"><span>Zakázka je hotová, zbývá vystavit fakturu.</span><button class="btn xs primary" data-new="invoices" data-preset="${preset(Planning.invoicePreset(d))}">${icon('plus')}<span>Faktura</span></button></div>`
+                : !Planning.term(d) && Planning.of(d) === 'planned' ? `<div class="progress-hint"><span>Zakázka nemá termín, v kalendáři proto není.</span><button class="btn xs" data-edit="deals" data-id="${esc(id)}">${icon('calendar')}<span>Doplnit termín</span></button></div>` : ''}
+            </section>` : ''}
             <div class="kpis deal-kpis">
               ${kpi('Příjmy', money(f.income), f.unpaid ? `čeká ${money(f.unpaid)}` : 'zaplaceno')}
               ${kpi('Výdaje', money(f.expense), UI.plural(f.list.filter(m => m.type === 'expense').length, 'položka', 'položky', 'položek'))}
@@ -71,7 +78,7 @@ window.Views = window.Views || {};
             </section>
 
             <section class="card flush" id="sec-inv">
-              <div class="sec-head"><h3>Faktury</h3><button class="btn xs" data-new="invoices" data-preset="${preset({ dealId: id, contactId: d.contactId || '', amount: Math.max(0, price - UI.sum(invoices, 'amount')) || '' })}">${icon('plus')}<span>Faktura</span></button></div>
+              <div class="sec-head"><h3>Faktury</h3><button class="btn xs" data-new="invoices" data-preset="${preset(Planning.invoicePreset(d))}">${icon('plus')}<span>Faktura</span></button></div>
               ${C.table({ cols: C.cols.invoices({ contact: false }), rows: invoices, rowAttrs: C.editAttrs('invoices'), empty: noRows('Žádné faktury k této zakázce.') })}
             </section>
 
@@ -80,6 +87,7 @@ window.Views = window.Views || {};
               <dl class="fields">
                 ${field('Cena zakázky', price ? money(price) : '')}
                 ${field('Fáze', C.stagePill(d.stage))}
+                ${field('Termín práce', Planning.term(d))}
                 ${field('Kontakt', contact ? esc(contact.name) : '')}
                 ${field('Adresa', contact ? esc(contact.address) : '')}
                 ${field('Očekávané uzavření', d.expectedDate ? fmtDate(d.expectedDate) : '')}
