@@ -141,13 +141,15 @@
       },
       onDelete: item ? () => {
         if (col === 'contacts') {
+          const n = Media.count(id);
+          if (n && !confirm(`S kontaktem se smažou i jeho fotky a videa (${n}), i v cloudu. Opravdu pokračovat?`)) return;
           if (location.hash.includes(id)) location.hash = '#/contacts';
-          Store.removeContact(id);
+          Media.removeOwner(id);
         } else if (col === 'deals') {
           const n = Media.count(id);
           if (n && !confirm(`Se zakázkou se smažou i její fotky a videa (${n}), i v cloudu. Opravdu pokračovat?`)) return;
           if (location.hash.includes(id)) location.hash = '#/deals';
-          Media.removeDeal(id);
+          Media.removeOwner(id);
         } else {
           if ((item.attachments || []).length) Files.remove(item.attachments.map(a => a.id)).catch(() => {});
           Store.remove(col, id);

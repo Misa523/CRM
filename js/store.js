@@ -78,13 +78,14 @@
       data[col] = data[col].filter(x => x.id !== id);
       save();
     },
-    /** Smaže kontakt a odpojí ho od obchodů, úkolů a faktur (ty zůstanou). */
+    /** Smaže kontakt a záznamy jeho fotek; zakázky, úkoly a faktury zůstanou, jen se odpojí. Soubory maže Media.removeOwner. */
     removeContact(id) {
       ['deals', 'tasks', 'invoices'].forEach(c =>
         data[c].forEach(x => { if (x.contactId === id) x.contactId = ''; }));
+      data.media = data.media.filter(m => m.contactId !== id);
       Store.remove('contacts', id);
     },
-    /** Smaže zakázku a záznamy jejích fotek; faktury a pohyby zůstanou, jen se odpojí. Soubory maže Media.removeDeal. */
+    /** Smaže zakázku a záznamy jejích fotek; faktury a pohyby zůstanou, jen se odpojí. Soubory maže Media.removeOwner. */
     removeDeal(id) {
       const now = new Date().toISOString();
       ['invoices', 'transactions'].forEach(c =>
@@ -129,9 +130,9 @@
       if (!obj || !Array.isArray(obj.contacts)) throw new Error('Soubor nevypadá jako záloha CRM.');
       const media = data.media;
       data = migrate(obj);
-      // Fotky a videa se obnovením nemažou (v záloze nejsou jejich soubory), pokud jejich zakázka dál existuje.
-      const have = new Set(data.media.map(m => m.id)), deals = new Set(data.deals.map(d => d.id));
-      data.media = data.media.concat(media.filter(m => !have.has(m.id) && deals.has(m.dealId)));
+      // Fotky a videa se obnovením nemažou (v záloze nejsou jejich soubory), pokud jejich zakázka nebo kontakt dál existuje.
+      const have = new Set(data.media.map(m => m.id)), owners = new Set(data.deals.concat(data.contacts).map(x => x.id));
+      data.media = data.media.concat(media.filter(m => !have.has(m.id) && owners.has(m.dealId || m.contactId)));
       save();
     },
     reset() {

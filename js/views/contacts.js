@@ -8,7 +8,7 @@ window.Views = window.Views || {};
 
   const COLS = [
     { key: 'name', label: 'Jméno', cls: 'primary', sort: c => c.name, render: c =>
-      `<span class="cell-person">${C.avatar(c.name, 'sm')}<a class="cell-link" href="#/contact/${encodeURIComponent(c.id)}">${esc(c.name)}</a></span>` },
+      `<span class="cell-person">${C.avatar(c.name, 'sm')}<a class="cell-link" href="#/contact/${encodeURIComponent(c.id)}">${esc(c.name)}</a>${C.mediaBadge(c.id)}</span>` },
     { key: 'company', label: 'Firma', sort: c => c.company, render: c => esc(c.company) },
     { key: 'email', label: 'E-mail', cls: 'hide-md', sort: c => c.email, render: c => c.email ? `<a class="cell-link" href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
     { key: 'phone', label: 'Telefon', render: c => c.phone ? `<a class="cell-link" href="tel:${esc(c.phone.replace(/\s/g, ''))}">${esc(c.phone)}</a>` : '' },
@@ -81,6 +81,7 @@ window.Views = window.Views || {};
       const tasks = Store.all('tasks').filter(t => t.contactId === id).sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9'));
       const invoices = Store.all('invoices').filter(i => i.contactId === id).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
       const acts = c.activities || [];
+      const media = Media.count(id);
       const paid = sum(invoices.filter(i => i.status === 'paid'), 'amount');
       const openSum = sum(openDealsOf(id), 'value');
       const preset = esc(JSON.stringify({ contactId: id }));
@@ -103,6 +104,7 @@ window.Views = window.Views || {};
           <div class="record-actions">
             ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${icon('mail')}<span>E-mail</span></a>` : ''}
             ${c.phone ? `<a class="btn" href="tel:${esc(c.phone.replace(/\s/g, ''))}">${icon('phone')}<span>Zavolat</span></a>` : ''}
+            <button class="btn" id="claim" ${media ? '' : 'disabled title="Nejdřív přidejte fotky nebo videa"'}>${icon('shield')}<span>Pro pojišťovnu</span></button>
             <button class="btn primary" data-edit="contacts" data-id="${esc(id)}">${icon('edit')}<span>Upravit</span></button>
           </div>
         </div>
@@ -111,7 +113,7 @@ window.Views = window.Views || {};
           <nav class="record-nav filters" aria-label="Související seznamy">
             <div class="filters-title">Související seznamy</div>
             <div class="filters-list">
-              ${[['sec-info', 'Informace', null], ['sec-activity', 'Aktivita', acts.length], ['sec-deals', 'Zakázky', deals.length], ['sec-tasks', 'Úkoly', tasks.length], ['sec-invoices', 'Faktury', invoices.length]]
+              ${[['sec-info', 'Informace', null], ['sec-media', 'Fotky a videa', media], ['sec-activity', 'Aktivita', acts.length], ['sec-deals', 'Zakázky', deals.length], ['sec-tasks', 'Úkoly', tasks.length], ['sec-invoices', 'Faktury', invoices.length]]
                 .map(([sid, l, n]) => `<button class="filter" data-jump="${sid}"><span>${l}</span>${n != null ? `<span class="filter-count">${n}</span>` : ''}</button>`).join('')}
             </div>
           </nav>
@@ -132,6 +134,11 @@ window.Views = window.Views || {};
                 ${field('Vytvořeno', c.createdAt ? fmtDate(c.createdAt) : '')}
               </dl>
               ${c.note ? `<div class="sec-sub">Popis</div><p class="note">${esc(c.note)}</p>` : ''}
+            </section>
+
+            <section class="card flush" id="sec-media">
+              <div class="sec-head"><h3>Fotky a videa</h3><span class="muted small">do 50 MB na soubor</span></div>
+              <div class="sec-body">${Media.section(id)}</div>
             </section>
 
             <section class="card flush" id="sec-activity">
@@ -158,6 +165,8 @@ window.Views = window.Views || {};
           </div>
         </div>`;
 
+      Media.mount(el.querySelector('#sec-media'), id);
+      el.querySelector('#claim').addEventListener('click', () => Media.claimModal(id));
       el.querySelector('#act-form').addEventListener('submit', e => {
         e.preventDefault();
         const text = e.target.elements.text.value.trim();

@@ -1,4 +1,5 @@
-/* Fotky a videa zakázek (před, po, škoda…) a podklady pro pojišťovnu.
+/* Fotky a videa zakázek a kontaktů (před, po, škoda…) a podklady pro pojišťovnu.
+ * Vlastník = zakázka (dealId) nebo kontakt (contactId); funkce berou jeho id, id se mezi kolekcemi neopakují.
  * Záznam je v kolekci „media“ (každá fotka zvlášť, aby se při synchronizaci nepřepsaly fotky z jiného zařízení).
  * Soubor je v IndexedDB a v cloudu pod id záznamu, zmenšený náhled pod <id>-t. Originály se nemění (důkaz). */
 (function () {
@@ -14,8 +15,16 @@
   const thumbId = id => id + '-t';
   const when = m => m.takenAt || m.createdAt || '';
 
-  const ofDeal = dealId => Store.all('media').filter(m => m.dealId === dealId).sort((a, b) => when(a).localeCompare(when(b)));
-  const count = dealId => Store.all('media').reduce((n, m) => n + (m.dealId === dealId ? 1 : 0), 0);
+  /** Zakázka nebo kontakt podle id: { col, key, rec, title }. */
+  function ownerOf(id) {
+    const deal = Store.get('deals', id);
+    if (deal) return { col: 'deals', key: 'dealId', rec: deal, title: deal.title };
+    const contact = Store.get('contacts', id);
+    return contact ? { col: 'contacts', key: 'contactId', rec: contact, title: contact.name } : null;
+  }
+  const owns = (id, m) => !!id && (m.dealId === id || m.contactId === id);
+  const ofOwner = id => Store.all('media').filter(m => owns(id, m)).sort((a, b) => when(a).localeCompare(when(b)));
+  const count = id => Store.all('media').reduce((n, m) => n + (owns(id, m) ? 1 : 0), 0);
 
   /* ---------- Zpracování obrázku a videa ---------- */
   const toBlob = (canvas, q) => new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
@@ -104,7 +113,7 @@
     return null;
   };
   let busy = 0;
-  async function addFiles(dealId, phase, fileList, camera) {
+  async function addFiles(ownerId, phase, fileList, camera) {
     const files = [...fileList], problems = [], records = [];
     if (!files.length) return;
     busy++;
@@ -122,7 +131,7 @@
         await Files.put(id, f);
         if (info.thumb) await Files.put(thumbId(id), info.thumb);
         records.push({
-          id, dealId, phase, kind, name: f.name || (kind === 'video' ? 'video' : 'fotka'), type: f.type, size: f.size,
+          id, dealId: '', contactId: '', phase, kind, name: f.name || (kind === 'video' ? 'video' : 'fotka'), type: f.type, size: f.size,
           takenAt, camera: !!camera, duration: info.duration, thumb: !!info.thumb, note: '',
         });
       } catch (e) { problems.push(`${f.name}: ${e && e.message ? e.message : 'nepodařilo se uložit.'}`); }
@@ -130,7 +139,9 @@
     progress('');
     busy--;
     if (records.length) {
-      if (!Store.get('deals', dealId)) { await Files.remove(records.flatMap(r => [r.id, thumbId(r.id)])); return; }
+      const owner = ownerOf(ownerId); // mohl být mezitím smazaný
+      if (!owner) { await Files.remove(records.flatMap(r => [r.id, thumbId(r.id)])); return; }
+      records.forEach(r => { r[owner.key] = ownerId; });
       Store.addMany('media', records);
       records.forEach(r => { if (r.thumb) Sync.queueUpload(thumbId(r.id)); });
       records.forEach(r => Sync.queueUpload(r.id));
@@ -147,7 +158,7 @@
 
   // Jeden stálý skrytý výběr souborů – překreslení stránky během focení ho nesmí zrušit.
   let picker = null;
-  function pick(dealId, phase, camera) {
+  function pick(ownerId, phase, camera) {
     if (!picker) {
       picker = document.createElement('input');
       picker.type = 'file';
@@ -159,7 +170,7 @@
     picker.multiple = !camera;
     picker.accept = camera ? 'image/*' : 'image/*,video/*';
     if (camera) picker.setAttribute('capture', 'environment'); else picker.removeAttribute('capture');
-    picker.onchange = () => addFiles(dealId, phase, picker.files, camera);
+    picker.onchange = () => addFiles(ownerId, phase, picker.files, camera);
     picker.click();
   }
 
@@ -171,9 +182,12 @@
     removeFiles([m]);
     Store.remove('media', m.id);
   }
-  function removeDeal(dealId) {
-    removeFiles(ofDeal(dealId));
-    Store.removeDeal(dealId);
+  /** Smaže zakázku nebo kontakt i s fotkami a videi. */
+  function removeOwner(id) {
+    const owner = ownerOf(id);
+    if (!owner) return;
+    removeFiles(ofOwner(id));
+    if (owner.col === 'deals') Store.removeDeal(id); else Store.removeContact(id);
   }
 
   /* ---------- Náhledy ---------- */
@@ -216,9 +230,9 @@
   const takenText = m => (m.takenAt ? `pořízeno ${fmtDateTime(m.takenAt)} (údaj z fotky)`
     : m.camera ? `vyfoceno v CRM ${fmtDateTime(m.createdAt)}` : `přidáno do CRM ${fmtDateTime(m.createdAt)}`);
 
-  /* ---------- Sekce v detailu zakázky ---------- */
-  function section(dealId) {
-    const all = ofDeal(dealId);
+  /* ---------- Sekce v detailu zakázky a kontaktu ---------- */
+  function section(ownerId) {
+    const all = ofOwner(ownerId);
     return `<div class="media-grid">${PHASES.map(p => {
       const list = all.filter(m => phaseOf(m.phase).id === p.id);
       return `<section class="media-phase ph-${p.id}" data-phase="${p.id}">
@@ -233,21 +247,21 @@
       </section>`;
     }).join('')}</div>`;
   }
-  function mount(root, dealId) {
-    root.querySelectorAll('[data-media-add]').forEach(b => b.addEventListener('click', () => pick(dealId, b.dataset.mediaAdd, false)));
-    root.querySelectorAll('[data-media-cam]').forEach(b => b.addEventListener('click', () => pick(dealId, b.dataset.mediaCam, true)));
-    root.querySelectorAll('[data-media-open]').forEach(b => b.addEventListener('click', () => lightbox(dealId, b.dataset.mediaOpen)));
+  function mount(root, ownerId) {
+    root.querySelectorAll('[data-media-add]').forEach(b => b.addEventListener('click', () => pick(ownerId, b.dataset.mediaAdd, false)));
+    root.querySelectorAll('[data-media-cam]').forEach(b => b.addEventListener('click', () => pick(ownerId, b.dataset.mediaCam, true)));
+    root.querySelectorAll('[data-media-open]').forEach(b => b.addEventListener('click', () => lightbox(ownerId, b.dataset.mediaOpen)));
     root.querySelectorAll('[data-phase]').forEach(el => {
       el.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); el.classList.add('over'); } });
       el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('over'); });
-      el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); addFiles(dealId, el.dataset.phase, e.dataTransfer.files, false); });
+      el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); addFiles(ownerId, el.dataset.phase, e.dataTransfer.files, false); });
     });
-    fillThumbs(root, ofDeal(dealId));
+    fillThumbs(root, ofOwner(ownerId));
   }
 
   /* ---------- Prohlížeč ---------- */
-  function lightbox(dealId, id) {
-    const order = PHASES.flatMap(p => ofDeal(dealId).filter(m => phaseOf(m.phase).id === p.id)).map(m => m.id);
+  function lightbox(ownerId, id) {
+    const order = PHASES.flatMap(p => ofOwner(ownerId).filter(m => phaseOf(m.phase).id === p.id)).map(m => m.id);
     let idx = Math.max(0, order.indexOf(id));
     let url = null, token = 0;
     const free = () => { if (url) URL.revokeObjectURL(url); url = null; };
@@ -330,15 +344,16 @@
   /* ---------- Podklady pro pojišťovnu ---------- */
   const safe = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'soubor';
 
-  function protocol({ deal, claim, list, src }) {
-    const contact = deal.contactId && Store.get('contacts', deal.contactId);
+  function protocol({ owner, claim, list, src }) {
+    const isDeal = owner.col === 'deals';
+    const contact = isDeal ? owner.rec.contactId && Store.get('contacts', owner.rec.contactId) : owner.rec;
     const row = (k, v) => (v ? `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>` : '');
     let n = 0;
     return `<article class="protocol">
-      <h1>Fotodokumentace zakázky</h1>
+      <h1>${isDeal ? 'Fotodokumentace zakázky' : 'Fotodokumentace'}</h1>
       <table>
         ${row('Zpracoval', Store.settings().businessName)}
-        ${row('Zakázka', deal.title)}
+        ${row('Zakázka', isDeal ? owner.title : '')}
         ${row('Klient', contact ? [contact.name, contact.company].filter(Boolean).join(', ') : '')}
         ${row('Adresa', contact ? contact.address : '')}
         ${row('Datum události', claim.date ? fmtDate(claim.date) : '')}
@@ -363,10 +378,11 @@
     .pre{white-space:pre-wrap}.shots{display:grid;grid-template-columns:1fr 1fr;gap:14px}figure{margin:0;break-inside:avoid}img{width:100%;max-height:420px;object-fit:contain;background:#f2f2f2}
     .noimg{padding:40px 10px;text-align:center;background:#f2f2f2}.foot,small{color:#666}.foot{margin-top:24px;font-size:12px}`;
 
-  function claimModal(dealId) {
-    const deal = Store.get('deals', dealId);
-    const all = PHASES.flatMap(p => ofDeal(dealId).filter(m => phaseOf(m.phase).id === p.id));
-    const claim = Object.assign({ date: '', number: '', text: '' }, deal.claim);
+  function claimModal(ownerId) {
+    const owner = ownerOf(ownerId);
+    if (!owner) return;
+    const all = PHASES.flatMap(p => ofOwner(ownerId).filter(m => phaseOf(m.phase).id === p.id));
+    const claim = Object.assign({ date: '', number: '', text: '' }, owner.rec.claim);
     const sel = new Set(all.map(m => m.id));
     let urls = [];
     const dropUrls = () => { urls.forEach(u => URL.revokeObjectURL(u)); urls = []; };
@@ -425,8 +441,8 @@
       const form = () => ({ date: $('#cl_date').value, number: $('#cl_num').value.trim(), text: $('#cl_text').value.trim() });
       const saveClaim = () => {
         if (!$('#cl_date')) return;
-        const v = form(), d = Store.get('deals', dealId);
-        if (d && JSON.stringify(v) !== JSON.stringify(Object.assign({ date: '', number: '', text: '' }, d.claim))) Store.update('deals', dealId, { claim: v });
+        const v = form(), d = Store.get(owner.col, ownerId);
+        if (d && JSON.stringify(v) !== JSON.stringify(Object.assign({ date: '', number: '', text: '' }, d.claim))) Store.update(owner.col, ownerId, { claim: v });
       };
 
       // Nejdřív se soubory načtou (třeba z cloudu), sdílení a tisk pak musí proběhnout hned po klepnutí (iOS).
@@ -476,8 +492,8 @@
         try {
           await navigator.share({
             files: pack.files.map(f => f.file),
-            title: 'Fotodokumentace – ' + deal.title,
-            text: ['Fotodokumentace zakázky: ' + deal.title, pack.claim.number && 'Číslo pojistné události: ' + pack.claim.number,
+            title: 'Fotodokumentace – ' + owner.title,
+            text: [(owner.col === 'deals' ? 'Fotodokumentace zakázky: ' : 'Fotodokumentace: ') + owner.title, pack.claim.number && 'Číslo pojistné události: ' + pack.claim.number,
               pack.claim.date && 'Datum události: ' + fmtDate(pack.claim.date), pack.claim.text].filter(Boolean).join('\n'),
           });
         } catch (e) { if (e.name !== 'AbortError') say('Sdílení se nepovedlo. Zkuste méně souborů nebo stažení ZIPu.', true); }
@@ -496,9 +512,9 @@
             entries.push({ name: path, blob: v.blob });
           });
           const html = `<!doctype html><html lang="cs"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fotodokumentace</title><style>${PROTOCOL_CSS}</style><body>` +
-            protocol({ deal, claim: p.claim, list: p.list, src: x => imgs.get(x.id) }) + '</body></html>';
+            protocol({ owner, claim: p.claim, list: p.list, src: x => imgs.get(x.id) }) + '</body></html>';
           entries.unshift({ name: 'protokol.html', blob: new Blob([html], { type: 'text/html' }) });
-          Files.download(await Zip.create(entries), `fotodokumentace-${safe(deal.title)}-${UI.today()}.zip`);
+          Files.download(await Zip.create(entries), `fotodokumentace-${safe(owner.title)}-${UI.today()}.zip`);
         } catch (err) { say('ZIP se nepodařilo vytvořit: ' + err.message, true); }
         btn.disabled = false;
       });
@@ -508,7 +524,7 @@
         let box = document.getElementById('print');
         if (!box) { box = document.createElement('div'); box.id = 'print'; document.body.appendChild(box); }
         const p = pack;
-        box.innerHTML = protocol({ deal, claim: p.claim, list: p.list, src: x => (p.prints.get(x.id) || {}).url });
+        box.innerHTML = protocol({ owner, claim: p.claim, list: p.list, src: x => (p.prints.get(x.id) || {}).url });
         document.body.classList.add('printing');
         // Tisk musí jít spustit hned po klepnutí, proto se obrázky načtou dopředu.
         $('[data-cl-print]').disabled = true;
@@ -530,5 +546,5 @@
   }
 
   window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
-  window.Media = { PHASES, ofDeal, count, section, mount, addFiles, removeDeal, claimModal };
+  window.Media = { PHASES, ofOwner, count, section, mount, addFiles, removeOwner, claimModal };
 })();

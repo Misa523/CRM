@@ -36,7 +36,7 @@ Views.settings = {
         <p class="muted">${cloud
           ? 'Data jsou bezpečně v cloudu. Záloha do souboru je pojistka navíc – stáhněte si ji občas, třeba jednou za měsíc.'
           : 'Data jsou uložená <strong>jen v tomto prohlížeči na tomto zařízení</strong>. Pravidelně si stahujte zálohu. Stejným souborem data přenesete i na jiné zařízení (např. iPad).'}</p>
-        ${media.length ? `<p class="small">Fotky a videa (${counts[5]}, ${Files.fmtSize(UI.sum(media, 'size'))}) v záloze <strong>nejsou</strong>, jsou na to moc velké. Stáhnete je u zakázky: Pro pojišťovnu → Stáhnout ZIP.</p>` : ''}
+        ${media.length ? `<p class="small">Fotky a videa (${counts[5]}, ${Files.fmtSize(UI.sum(media, 'size'))}) v záloze <strong>nejsou</strong>, jsou na to moc velké. Stáhnete je u zakázky nebo kontaktu: Pro pojišťovnu → Stáhnout ZIP.</p>` : ''}
         ${metas.length ? `<p class="small">Záloha obsahuje i faktury a účtenky: <strong>${UI.plural(metas.length, 'soubor', 'soubory', 'souborů')}, ${Files.fmtSize(filesSize)}</strong>.</p>` : ''}
         <p class="small">Poslední záloha: <strong>${s.lastBackup ? esc(fmtDateTime(s.lastBackup)) : 'zatím žádná'}</strong></p>
         <div class="btn-row">
@@ -99,7 +99,7 @@ Views.settings = {
     el.querySelector('#import').addEventListener('change', e => {
       const file = e.target.files[0];
       if (!file) return;
-      if (!confirm('Obnovení nahradí současná data obsahem zálohy (fotky a videa zakázek, které v záloze jsou, zůstanou). Pokračovat?')) { e.target.value = ''; return; }
+      if (!confirm('Obnovení nahradí současná data obsahem zálohy (fotky a videa u zakázek a kontaktů, které v záloze jsou, zůstanou). Pokračovat?')) { e.target.value = ''; return; }
       const reader = new FileReader();
       reader.onload = async () => {
         try {

@@ -19,7 +19,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/files.js` | Přílohy: IndexedDB, `Files.editor()` (sekce ve formuláři faktury, ukládá až při „Uložit“), `Files.open()`, export a import do zálohy |
 | `js/theme.js` | Světlý / tmavý vzhled / podle zařízení (`Theme`). Nastavuje `data-theme` na `<html>`, volba je jen v tomto zařízení (`crm-theme`) |
 | `js/finance.js` | Výpočty: `Finance.movements()` (zaplacené faktury + transakce), `totals`, `deal(id)`, marže. Příjmy a výdaje počítej **vždy** přes něj, ať čísla na Domů, ve Financích a v zakázce sedí |
-| `js/media.js` | Fotky a videa zakázek (před/po/škoda/ostatní), náhledy, prohlížeč, „Pro pojišťovnu“ (sdílení, ZIP, protokol k tisku). Originály se nesmí měnit (důkaz) |
+| `js/media.js` | Fotky a videa zakázek i kontaktů (před/po/škoda/ostatní), náhledy, prohlížeč, „Pro pojišťovnu“ (sdílení, ZIP, protokol k tisku). Originály se nesmí měnit (důkaz) |
 | `js/zip.js` | Vytvoření ZIPu bez knihoven |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
@@ -39,9 +39,9 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 ## Datový model
 - `contacts`: `name, company, email, phone, ico, address, tags[], note, activities[{id,date,text}]`
 - `deals`: `title, contactId, value, stage (lead|contacted|offer|negotiation|won|lost), expectedDate, wonDate, note`
-- `deals` mají navíc volitelné `claim {date, number, text}` (pojistná událost)
+- `deals` i `contacts` mají navíc volitelné `claim {date, number, text}` (pojistná událost)
 - `transactions`: `type (income|expense), title, amount, date, dealId, category (Schema.CATEGORIES), vendor, note, attachments[]`
-- `media`: `id (= id souboru), dealId, phase (before|after|damage|other), kind (photo|video), name, type, size, takenAt (z EXIF, jinak null), camera, duration, thumb, note`. Náhled je soubor `<id>-t`.
+- `media`: `id (= id souboru), dealId nebo contactId (vlastník, druhé je prázdné), phase (before|after|damage|other), kind (photo|video), name, type, size, takenAt (z EXIF, jinak null), camera, duration, thumb, note`. Náhled je soubor `<id>-t`.
 - `tasks`: `title, contactId, due, priority (high|normal|low), done, doneAt, note`
 - `invoices`: `number, contactId, dealId, amount, status (draft|sent|paid), issueDate, dueDate, paidDate, note, attachments[{id,name,type,size,addedAt}]`. Samotné soubory příloh jsou v IndexedDB (`crm-files`, klíč = `id`), viz `js/files.js`. Záloha (Nastavení) je vkládá do JSON jako `files: {id: {name,type,data(base64)}}`; tento klíč se nikdy nesmí dostat do localStorage. Stav „po splatnosti“ se počítá (sent + dueDate < dnes).
 - Data uživatele jsou reálná. **Při změně tvaru dat** zvyš `SCHEMA_VERSION` ve `store.js` a doplň převod v `migrate()`, aby stará data i staré zálohy fungovaly dál. Nikdy existující data nemaž ani nepřejmenovávej pole bez migrace.
