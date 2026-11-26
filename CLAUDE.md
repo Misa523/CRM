@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → planning → media → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → planning → media → handover → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -21,6 +21,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/finance.js` | Výpočty: `Finance.movements()` (zaplacené faktury + transakce), `totals`, `deal(id)`, marže. Příjmy a výdaje počítej **vždy** přes něj, ať čísla na Domů, ve Financích a v zakázce sedí |
 | `js/planning.js` | Průběh vyhrané zakázky (`Planning.PROGRESS`, `of`, `set`, `pill`), termíny, upozornění (`issues`) a události kalendáře (`events`) |
 | `js/media.js` | Fotky a videa zakázek i kontaktů (před/po/škoda/ostatní), náhledy, prohlížeč, „Pro pojišťovnu“ (sdílení, ZIP, protokol k tisku). Originály se nesmí měnit (důkaz) |
+| `js/handover.js` | Předávací protokol: podpis prstem, PDF bez knihoven (stránky z canvasu jako JPEG), uložení do `deal.handovers` a sdílení |
 | `js/zip.js` | Vytvoření ZIPu bez knihoven |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
@@ -40,6 +41,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 ## Datový model
 - `contacts`: `name, company, email, phone, ico, address, tags[], note, activities[{id,date,text}]`
 - `deals`: `title, contactId, value, stage (lead|contacted|offer|negotiation|won|lost), expectedDate, wonDate, dateFrom, dateTo (termín práce), progress (planned|active|done|invoiced – platí jen pro won, chybějící = planned), note`
+- `deals` mají navíc `handovers[{id (= id souboru PDF), name, type, size, addedAt, date, signer}]` (předávací protokoly)
 - `deals` i `contacts` mají navíc volitelné `claim {date, number, text}` (pojistná událost)
 - `transactions`: `type (income|expense), title, amount, date, dealId, category (Schema.CATEGORIES), vendor, note, attachments[]`
 - `media`: `id (= id souboru), dealId nebo contactId (vlastník, druhé je prázdné), phase (before|after|damage|other), kind (photo|video), name, type, size, takenAt (z EXIF, jinak null), camera, duration, thumb, note`. Náhled je soubor `<id>-t`.

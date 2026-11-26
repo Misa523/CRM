@@ -187,6 +187,8 @@
     const owner = ownerOf(id);
     if (!owner) return;
     removeFiles(ofOwner(id));
+    const docs = (owner.rec.handovers || []).map(h => h.id); // předávací protokoly zakázky
+    if (docs.length) Files.remove(docs).catch(() => {});
     if (owner.col === 'deals') Store.removeDeal(id); else Store.removeContact(id);
   }
 
@@ -546,5 +548,5 @@
   }
 
   window.addEventListener('beforeunload', e => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
-  window.Media = { PHASES, ofOwner, count, section, mount, addFiles, removeOwner, claimModal };
+  window.Media = { PHASES, ofOwner, count, section, mount, addFiles, removeOwner, claimModal, thumbHtml, fillThumbs, takenText };
 })();

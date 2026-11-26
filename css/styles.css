@@ -782,6 +782,17 @@ label.field.check-row { color: var(--text); font-weight: 500; }
 .cal-legend i { width: 10px; height: 10px; border-radius: 3px; }
 .cal-legend i.tentative { background: none; border: 1px dashed var(--ev); }
 
+/* Předávací protokol */
+.sign-box { position: relative; height: 190px; border: 1.5px dashed var(--border-strong); border-radius: 8px; background: #fff; overflow: hidden; }
+.sign-box.has { border-style: solid; border-color: var(--primary); }
+.sign-pad { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.sign-hint { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; color: #8a93a3; font-size: 13px; pointer-events: none; }
+.sign-box::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: 40px; border-bottom: 1px solid #d5dae3; pointer-events: none; }
+.sign-box.has .sign-hint { display: none; }
+.ho-row .ag-row { border-left: 3px solid var(--primary); text-align: left; }
+.ho-row .icon-btn { align-self: center; }
+.ho-row .icon-btn:last-child { margin-right: 6px; }
+
 /* Finance */
 .fin-deals { margin-bottom: 20px; overflow: hidden; }
 .fin-deals .table-wrap { border: 0; border-radius: 0; box-shadow: none; }

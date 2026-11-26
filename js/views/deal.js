@@ -36,6 +36,7 @@ window.Views = window.Views || {};
           </div>
           <div class="record-actions">
             <button class="btn" id="claim" ${media ? '' : 'disabled title="Nejdřív přidejte fotky nebo videa"'}>${icon('shield')}<span>Pro pojišťovnu</span></button>
+            <button class="btn" data-handover="${esc(id)}">${icon('edit')}<span>Předávací protokol</span></button>
             <button class="btn primary" data-edit="deals" data-id="${esc(id)}">${icon('edit')}<span>Upravit</span></button>
           </div>
         </div>
@@ -44,7 +45,7 @@ window.Views = window.Views || {};
           <nav class="record-nav filters" aria-label="Části zakázky">
             <div class="filters-title">Zakázka</div>
             <div class="filters-list">
-              ${[['sec-media', 'Fotky a videa', media], ['sec-money', 'Finance', f.list.length], ['sec-inv', 'Faktury', invoices.length], ['sec-info', 'Informace', null]]
+              ${[['sec-media', 'Fotky a videa', media], ['sec-money', 'Finance', f.list.length], ['sec-inv', 'Faktury', invoices.length], ['sec-handover', 'Protokoly', (d.handovers || []).length], ['sec-info', 'Informace', null]]
                 .map(([sid, l, n]) => `<button class="filter" data-jump="${sid}"><span>${l}</span>${n != null ? `<span class="filter-count">${n}</span>` : ''}</button>`).join('')}
             </div>
           </nav>
@@ -82,6 +83,8 @@ window.Views = window.Views || {};
               ${C.table({ cols: C.cols.invoices({ contact: false }), rows: invoices, rowAttrs: C.editAttrs('invoices'), empty: noRows('Žádné faktury k této zakázce.') })}
             </section>
 
+            ${Handover.section(d)}
+
             <section class="card flush" id="sec-info">
               <div class="sec-head"><h3>Informace o zakázce</h3></div>
               <dl class="fields">
@@ -99,6 +102,7 @@ window.Views = window.Views || {};
         </div>`;
 
       Media.mount(el.querySelector('#sec-media'), id);
+      Handover.mount(el, id);
       el.querySelector('#claim').addEventListener('click', () => Media.claimModal(id));
     },
   };

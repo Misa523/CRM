@@ -93,8 +93,8 @@
       data.media = data.media.filter(m => m.dealId !== id);
       Store.remove('deals', id);
     },
-    /** Doklady (přílohy faktur a pohybů): [{ id, name, type, size }]. */
-    docMetas: () => data.invoices.concat(data.transactions).flatMap(x => x.attachments || []),
+    /** Doklady (přílohy faktur a pohybů, předávací protokoly zakázek): [{ id, name, type, size }]. */
+    docMetas: () => data.invoices.concat(data.transactions).flatMap(x => x.attachments || []).concat(data.deals.flatMap(d => d.handovers || [])),
     /** Id všech souborů v úložišti, včetně fotek, videí a jejich náhledů (<id>-t). */
     fileIds: () => Store.docMetas().map(a => a.id).concat(data.media.flatMap(m => (m.thumb ? [m.id + '-t', m.id] : [m.id]))),
     /** Celý datový objekt (jen pro čtení – používá synchronizace pro porovnání změn). */
