@@ -32,7 +32,7 @@ const fail = (message: string, status = 400) => Object.assign(new Error(message)
 
 /* ===================== Události z dat CRM (čistá logika) ===================== */
 // Upomínky: minuty před začátkem (události začínají v 7:00).
-const REMINDERS: Record<string, number> = { week: 7 * 1440, eve: 13 * 60, morning: 0 };
+const REMINDERS: Record<string, number> = { week: 7 * 1440, daybefore: 1440, eve: 13 * 60, morning: 0 };
 const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const addDays = (iso: string, n: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const todayIn = (tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -44,9 +44,9 @@ const PROGRESS: Record<string, string> = { planned: 'Naplánováno', active: 'Pr
 type Prefs = { reminders: string[]; email: boolean; currency: string; time_zone: string; app_url: string };
 
 function overrides(p: Prefs, withWeek: boolean) {
-  const keys = ['week', 'eve', 'morning'].filter(k => p.reminders.includes(k) && (withWeek || k !== 'week'));
+  const keys = ['week', 'daybefore', 'eve', 'morning'].filter(k => p.reminders.includes(k) && (withWeek || k !== 'week'));
   const list = keys.map(k => ({ method: 'popup', minutes: REMINDERS[k] }));
-  const mailAt = keys.includes('eve') ? 'eve' : keys.includes('morning') ? 'morning' : null;
+  const mailAt = ['eve', 'daybefore', 'morning'].find(k => keys.includes(k)) || null;
   if (p.email && mailAt) list.push({ method: 'email', minutes: REMINDERS[mailAt] });
   return list;
 }

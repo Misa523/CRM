@@ -11,6 +11,7 @@
   const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/, '');
   const REMINDERS = [
     ['week', 'Týden předem v 7:00', 'jen u zakázek'],
+    ['daybefore', 'Den předem v 7:00', ''],
     ['eve', 'Den předem v 18:00', ''],
     ['morning', 'V den termínu v 7:00', ''],
   ];
