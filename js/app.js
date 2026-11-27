@@ -1,5 +1,5 @@
 /* Router, navigace, menu „Vytvořit“ a globální obsluha kliknutí. */
-window.APP_VERSION = '27/11/2026'; // zvyš při každé úpravě – ukazuje se v Nastavení
+window.APP_VERSION = '27/11/2026 b'; // zvyš při každé úpravě – ukazuje se v Nastavení
 (function () {
   const NAV = [
     ['dashboard', 'Domů', 'home'],
@@ -156,7 +156,7 @@ window.APP_VERSION = '27/11/2026'; // zvyš při každé úpravě – ukazuje se
   Theme.onChange(renderTheme);
   renderTheme();
 
-  window.addEventListener('hashchange', () => { UI.closeModal(); menu.hidden = true; render(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { UI.closeModal('změna stránky'); menu.hidden = true; render(); window.scrollTo(0, 0); });
   Store.onChange(render);
   Sync.onStatus(renderSync);
 

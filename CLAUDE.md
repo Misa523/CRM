@@ -70,5 +70,5 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 ## Ověření změn
 - Spusť náhled `crm` z `.claude/launch.json` a zkontroluj změnu na šířce 375 px (telefon), 820 px (iPad) a na desktopu, ve světlém i tmavém režimu. V konzoli nesmí být chyby.
 - Po hotové úpravě zvyš `APP_VERSION` v `js/app.js` (datum, případně s písmenem) a udělej commit s krátkou českou zprávou, co se změnilo.
-- Okna otevírej jen přes `UI.openModal` / `UI.closeModal` (umí náhradu pro starší iPhony bez `<dialog>`), stav okna zjišťuj atributem `open`, ne vlastností `.open`.
+- Okna otevírej jen přes `UI.openModal` / `UI.closeModal` – okno se **neotevírá přes `showModal()`** (v aplikaci na ploše iPhonu se nezobrazilo), ale vlastním atributem `open` a pozadím `.modal-backdrop`. Stav zjišťuj atributem `open`, ne vlastností `.open`.
 - Chyby se uživateli ukážou červeným pruhem (`#app-error`), ať může poslat snímek obrazovky.

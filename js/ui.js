@@ -146,44 +146,52 @@
 
   /* ---------- Modální okno ---------- */
   const modalEl = () => document.getElementById('modal');
-  /* Okno je <dialog>. Starší iPhony (iOS před 15.4) ho neznají – pak se otevře náhradní okno se stejným chováním
-   * (zavření klepnutím vedle, klávesou Esc, událost „close“). */
+  /* Okno řídíme sami (atribut open + vlastní ztmavené pozadí), ne přes showModal() prohlížeče:
+   * v aplikaci na ploše iPhonu se nativní okno neukázalo. Zavření: tlačítko, klepnutí vedle, Esc;
+   * po zavření se pošle událost „close“ jako u <dialog>. */
   const isOpen = m => m.hasAttribute('open');
-  let backdrop = null;
+  let backdrop = null, openedAt = 0;
   function openModal(html, onMount, cls = '') {
     const m = modalEl();
-    const fallback = typeof m.showModal !== 'function';
-    m.className = ('modal ' + cls + (fallback ? ' fallback' : '')).trim();
+    m.className = ('modal ' + cls).trim();
     m.innerHTML = html;
     if (!isOpen(m)) {
-      if (!fallback) {
-        try { m.showModal(); } catch (e) { m.setAttribute('open', ''); }
-      } else {
-        m.setAttribute('open', '');
-        backdrop = backdrop || Object.assign(document.createElement('div'), { className: 'modal-backdrop' });
-        document.body.appendChild(backdrop);
-        document.body.classList.add('modal-lock');
-      }
+      backdrop = backdrop || Object.assign(document.createElement('div'), { className: 'modal-backdrop' });
+      m.before(backdrop); // pozadí hned před oknem → klepnutí vedle trefí pozadí
+      m.setAttribute('open', '');
+      document.body.classList.add('modal-lock');
+      openedAt = Date.now();
+      check(m);
     }
-    m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
+    m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal()));
     if (onMount) onMount(m);
   }
-  function closeModal() {
+  function closeModal(reason) {
     const m = modalEl();
     delete m.dataset.locked;
     if (!isOpen(m)) return;
-    if (typeof m.close === 'function') { m.close(); return; }
+    if (reason && Date.now() - openedAt < 700) showError(`Okno se zavřelo hned po otevření (${reason}).`);
     m.removeAttribute('open');
     if (backdrop) backdrop.remove();
     document.body.classList.remove('modal-lock');
     m.dispatchEvent(new Event('close'));
   }
-  // Klik mimo okno ho zavře (kromě oken, kde je volba povinná – data-locked).
+  /** Kontrola pro hlášení chyb: okno je otevřené, ale není vidět. */
+  function check(m) {
+    setTimeout(() => {
+      if (!isOpen(m)) return;
+      const r = m.getBoundingClientRect(), cs = getComputedStyle(m);
+      if (r.height < 20 || r.bottom < 10 || r.top > innerHeight - 10 || cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.1) {
+        showError(`Okno není vidět: ${[Math.round(r.top), Math.round(r.height), innerHeight, cs.display, cs.position, cs.opacity].join(' / ')}`);
+      }
+    }, 600);
+  }
+  // Klepnutí vedle okna ho zavře (kromě oken, kde je volba povinná – data-locked).
   document.addEventListener('click', e => {
-    if ((e.target === modalEl() || e.target === backdrop) && !modalEl().dataset.locked) closeModal();
+    if (e.target === backdrop && !modalEl().dataset.locked) closeModal('klepnutí vedle');
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && backdrop && isOpen(modalEl()) && !modalEl().dataset.locked) closeModal();
+    if (e.key === 'Escape' && isOpen(modalEl()) && !modalEl().dataset.locked) closeModal('Esc');
   });
 
   /* Chyby se ukážou i na telefonu (bez konzole), ať je jde nahlásit. */
