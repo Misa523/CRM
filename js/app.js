@@ -1,4 +1,5 @@
 /* Router, navigace, menu „Vytvořit“ a globální obsluha kliknutí. */
+window.APP_VERSION = '27/11/2026'; // zvyš při každé úpravě – ukazuje se v Nastavení
 (function () {
   const NAV = [
     ['dashboard', 'Domů', 'home'],

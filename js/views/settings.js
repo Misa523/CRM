@@ -59,7 +59,7 @@ Views.settings = {
         <button class="btn danger" id="wipe">${icon('trash')}<span>Smazat vše</span></button>
       </section>
 
-      <p class="muted small">Uloženo: ${counts[0]} kontaktů · ${counts[1]} zakázek · ${counts[2]} úkolů · ${counts[3]} faktur · ${counts[4]} příjmů a výdajů · ${counts[5]} fotek a videí</p>
+      <p class="muted small">Uloženo: ${counts[0]} kontaktů · ${counts[1]} zakázek · ${counts[2]} úkolů · ${counts[3]} faktur · ${counts[4]} příjmů a výdajů · ${counts[5]} fotek a videí<br>Verze aplikace: ${esc(window.APP_VERSION || '')}</p>
     </div>`;
 
     el.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => Theme.set(b.dataset.themeSet)));

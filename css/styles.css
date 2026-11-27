@@ -521,6 +521,7 @@ a.hbar:hover .hbar-label { color: var(--link); text-decoration: underline; }
 .modal {
   border: 0; padding: 0;
   width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
   max-height: calc(100dvh - 48px);
   background: var(--surface); color: var(--text);
   border-radius: 10px;
@@ -529,6 +530,17 @@ a.hbar:hover .hbar-label { color: var(--link); text-decoration: underline; }
 }
 .modal[open] { display: flex; flex-direction: column; animation: pop .15s ease-out; }
 .modal::backdrop { background: rgba(10, 16, 28, .5); }
+.modal:not([open]) { display: none; }
+/* Náhradní okno pro prohlížeče bez <dialog> (starší iOS) */
+.modal.fallback { position: fixed; z-index: 90; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 89; background: rgba(10, 16, 28, .5); }
+body.modal-lock { overflow: hidden; }
+#app-error {
+  position: fixed; z-index: 95; left: 12px; right: 12px; top: calc(var(--appbar-h) + 10px + env(safe-area-inset-top));
+  max-width: 560px; margin: 0 auto; padding: 12px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--red); color: #fff; box-shadow: var(--shadow-lg); font-size: 13.5px;
+}
+#app-error small { display: block; margin-top: 4px; opacity: .9; overflow-wrap: anywhere; }
 @keyframes pop { from { transform: translateY(8px); opacity: 0; } }
 .modal-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
@@ -649,7 +661,7 @@ body.locked .appbar, body.locked .page, body.locked .tabbar { display: none; }
 
 /* Prohlížeč fotek */
 .modal.lightbox { width: min(1100px, calc(100vw - 32px)); }
-.lb { position: relative; height: min(860px, calc(100dvh - 48px)); }
+.lb { position: relative; height: min(860px, calc(100vh - 48px)); height: min(860px, calc(100dvh - 48px)); }
 .lb-stage { flex: 1; min-height: 0; display: grid; place-items: center; background: #0b1018; overflow: hidden; }
 .lb-stage img, .lb-stage video { width: 100%; height: 100%; object-fit: contain; min-height: 0; min-width: 0; }
 .lb-load { color: #c3ccdb; padding: 24px; text-align: center; }
@@ -938,15 +950,16 @@ label.field.check-row { color: var(--text); font-weight: 500; }
   .kanban { grid-auto-columns: 84%; margin: 0 -16px; padding: 0 16px 14px; scroll-padding: 0 16px; scroll-snap-type: x mandatory; }
 
   /* Formulář jako spodní panel */
-  .modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 14px 14px 0 0; max-height: 92dvh; }
+  .modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 14px 14px 0 0; max-height: 92vh; max-height: 92dvh; }
   @keyframes pop { from { transform: translateY(40px); opacity: 0; } }
+  .modal.fallback { left: 0; right: 0; top: auto; bottom: 0; transform: none; }
   .form-grid { grid-template-columns: minmax(0, 1fr); padding: 14px 16px; }
   .modal-head { padding-left: 16px; }
   .modal-foot { padding-left: 16px; padding-right: 16px; }
   .activity-form { flex-direction: column; align-items: stretch; }
   .modal.lightbox, .modal.claim-modal { width: 100%; }
-  .modal.lightbox { max-height: 100dvh; border-radius: 0; }
-  .lb { height: 100dvh; padding-top: env(safe-area-inset-top); }
+  .modal.lightbox { max-height: 100vh; max-height: 100dvh; border-radius: 0; }
+  .lb { height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top); }
   .lb-info { padding: 10px 16px; }
   .lb-edit { grid-template-columns: 130px minmax(0, 1fr); }
   .thumbs { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }

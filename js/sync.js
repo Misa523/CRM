@@ -317,7 +317,7 @@
         </div></div>`, m => {
         m.dataset.locked = '1'; // volba je povinná: nejde zavřít klikem vedle ani Escapem
         const noEsc = e => e.preventDefault();
-        m.addEventListener('cancel', noEsc);
+        m.addEventListener('cancel', noEsc); // (náhradní okno Esc u zamčené volby ignoruje samo)
         m.addEventListener('close', () => m.removeEventListener('cancel', noEsc), { once: true });
         m.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => { UI.closeModal(); resolve(b.dataset.choice); }));
       });

@@ -146,17 +146,67 @@
 
   /* ---------- Modální okno ---------- */
   const modalEl = () => document.getElementById('modal');
+  /* Okno je <dialog>. Starší iPhony (iOS před 15.4) ho neznají – pak se otevře náhradní okno se stejným chováním
+   * (zavření klepnutím vedle, klávesou Esc, událost „close“). */
+  const isOpen = m => m.hasAttribute('open');
+  let backdrop = null;
   function openModal(html, onMount, cls = '') {
     const m = modalEl();
-    m.className = ('modal ' + cls).trim();
+    const fallback = typeof m.showModal !== 'function';
+    m.className = ('modal ' + cls + (fallback ? ' fallback' : '')).trim();
     m.innerHTML = html;
-    if (!m.open) m.showModal();
+    if (!isOpen(m)) {
+      if (!fallback) {
+        try { m.showModal(); } catch (e) { m.setAttribute('open', ''); }
+      } else {
+        m.setAttribute('open', '');
+        backdrop = backdrop || Object.assign(document.createElement('div'), { className: 'modal-backdrop' });
+        document.body.appendChild(backdrop);
+        document.body.classList.add('modal-lock');
+      }
+    }
     m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
     if (onMount) onMount(m);
   }
-  function closeModal() { const m = modalEl(); delete m.dataset.locked; if (m.open) m.close(); }
+  function closeModal() {
+    const m = modalEl();
+    delete m.dataset.locked;
+    if (!isOpen(m)) return;
+    if (typeof m.close === 'function') { m.close(); return; }
+    m.removeAttribute('open');
+    if (backdrop) backdrop.remove();
+    document.body.classList.remove('modal-lock');
+    m.dispatchEvent(new Event('close'));
+  }
   // Klik mimo okno ho zavře (kromě oken, kde je volba povinná – data-locked).
-  document.addEventListener('click', e => { if (e.target === modalEl() && !modalEl().dataset.locked) closeModal(); });
+  document.addEventListener('click', e => {
+    if ((e.target === modalEl() || e.target === backdrop) && !modalEl().dataset.locked) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && backdrop && isOpen(modalEl()) && !modalEl().dataset.locked) closeModal();
+  });
+
+  /* Chyby se ukážou i na telefonu (bez konzole), ať je jde nahlásit. */
+  let lastErr = 0;
+  function showError(msg) {
+    msg = String(msg || '');
+    if (!msg || /ResizeObserver loop|Script error\.?$/i.test(msg) || Date.now() - lastErr < 4000) return;
+    lastErr = Date.now();
+    let el = document.getElementById('app-error');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'app-error';
+      el.setAttribute('role', 'alert');
+      document.body.appendChild(el);
+      el.addEventListener('click', () => { el.hidden = true; });
+    }
+    el.innerHTML = `<b>Něco se pokazilo.</b> Pošlete prosím snímek obrazovky.<small>${esc(msg).slice(0, 300)}</small>`;
+    el.hidden = false;
+    clearTimeout(el._h);
+    el._h = setTimeout(() => { el.hidden = true; }, 15000);
+  }
+  window.addEventListener('error', e => showError(e.message || (e.error && e.error.message)));
+  window.addEventListener('unhandledrejection', e => showError(e.reason && (e.reason.message || e.reason)));
 
   /* ---------- Formuláře ----------
    * Pole: { name, label, type: text|email|tel|date|number|select|textarea|tags, options, required, wide } */
