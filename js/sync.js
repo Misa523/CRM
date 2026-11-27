@@ -460,6 +460,8 @@
     start: tick,
     syncNow: () => { rejected.clear(); return session && !active() ? start() : syncNow(); },
     showLogin, signOut, queueUpload, queueDelete, downloadFile,
+    /** Zavolá serverovou funkci Supabase (Edge Function) jako přihlášený uživatel. */
+    fn: async (name, body) => (await api('/functions/v1/' + name, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })).json(),
     user: () => session && session.user,
     status: () => ({ status, message: statusMsg, lastSync: st.lastSync || null, pending: pendingCount() }),
     onStatus: fn => listeners.push(fn),

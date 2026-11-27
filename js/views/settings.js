@@ -22,6 +22,8 @@ Views.settings = {
 
       <section class="card" id="sync-box"></section>
 
+      <section class="card" id="gcal-box"></section>
+
       <section class="card">
         <h3>Firma</h3>
         <form id="biz" class="form-grid flat">
@@ -64,6 +66,7 @@ Views.settings = {
 
     el.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => Theme.set(b.dataset.themeSet)));
     Views.settings.drawSync(el.querySelector('#sync-box'));
+    Gcal.draw(el.querySelector('#gcal-box'));
 
     el.querySelector('#biz').addEventListener('submit', e => {
       e.preventDefault();

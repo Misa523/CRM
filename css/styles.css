@@ -808,6 +808,7 @@ label.field.check-row { color: var(--text); font-weight: 500; }
 .fin-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .fin-title h2 { font-size: 16px; }
 .theme-hint { margin: 8px 0 0; }
+.gc-checks { display: grid; gap: 8px; margin: 4px 0 12px; }
 .segmented.wrap-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 
 /* Tisk protokolu (PDF) */

@@ -4,7 +4,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 
 ## Technologie
 - Čisté HTML, CSS a JavaScript. **Žádný build, žádný npm, žádný framework.** Aplikace musí fungovat i po otevření `index.html` dvojklikem (file://), takže nepoužívej ES moduly (`import`/`export`) ani `fetch` lokálních souborů.
-- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → planning → media → handover → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
+- Skripty jsou klasické `<script>` v pevném pořadí v `index.html`: `store → ui → config → sync → files → zip → schema → components → charts → finance → planning → media → handover → gcal → views/* → app` (a `js/theme.js` v `<head>`). Grafy nepřidávej přes knihovny z CDN, aplikace musí fungovat i offline. Nový soubor přidej tam.
 - Globální jmenné prostory: `Store`, `UI`, `Schema`, `C` (komponenty), `Views`.
 
 ## Struktura
@@ -22,6 +22,7 @@ Osobní CRM pro malý byznys. Majitel posílá úpravy v češtině a bez techni
 | `js/planning.js` | Průběh vyhrané zakázky (`Planning.PROGRESS`, `of`, `set`, `pill`), termíny, upozornění (`issues`) a události kalendáře (`events`) |
 | `js/media.js` | Fotky a videa zakázek i kontaktů (před/po/škoda/ostatní), náhledy, prohlížeč, „Pro pojišťovnu“ (sdílení, ZIP, protokol k tisku). Originály se nesmí měnit (důkaz) |
 | `js/handover.js` | Předávací protokol: podpis prstem, PDF bez knihoven (stránky z canvasu jako JPEG), uložení do `deal.handovers` a sdílení |
+| `js/gcal.js` | Propojení s Google kalendářem (`Gcal.draw` v Nastavení, návrat z Googlu `?state&code`, po změně dat pobídne server). Zápis do Googlu dělá Edge Function `supabase/functions/gcal` (refresh token jen na serveru, plánovač v `supabase/google.sql` každých 10 min). Co se do Googlu posílá, určuje `buildEvents()` ve funkci – při změně ji musí uživatel znovu nasadit (návod `GOOGLE-KALENDAR.md`). Volání funkcí přes `Sync.fn(name, body)`. |
 | `js/zip.js` | Vytvoření ZIPu bez knihoven |
 | `js/schema.js` | Entity a jejich pole formulářů, číselníky (fáze obchodu, stavy faktur, priority) |
 | `js/components.js` | `C.table` (řaditelná tabulka), `C.filterPanel` + `C.listShell` (filtry vlevo), `C.cols.*` (sloupce úkolů, faktur, obchodů), avatar, pill |
